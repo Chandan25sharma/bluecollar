@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  name       String
+  email      String    @unique
+  phone      String? 
+  password   String
+  role       String    @default("CLIENT")
+  verified   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  
+  // Relations
+  services   Service[] 
+  bookingsAsClient   Booking[] @relation("ClientBookings")
+  bookingsAsProvider Booking[] @relation("ProviderBookings")
+  reviews            Review[]  @relation("UserReviews")
+  reviewsReceived    Review[]  @relation("ReviewsReceived")
+
+  @@map("users")
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  price       Float
+  category    String
+  location    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  provider    User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerId  Int
+  bookings    Booking[]
+  reviews     Review[]
+
+  @@map("services")
+}
+
+model Booking {
+  id           Int           @id @default(autoincrement())
+  scheduledAt  DateTime
+  completedAt  DateTime?
+  totalAmount  Float
+  status       String        @default("PENDING")
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  // Relations
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId    Int
+  client       User     @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Cascade)
+  clientId     Int
+  provider     User     @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Cascade)
+  providerId   Int
+  review       Review?
+
+  @@map("bookings")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int      // 1-5 stars
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId Int      @unique
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId Int
+  reviewer  User     @relation("UserReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewerId Int
+  reviewee  User     @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+  revieweeId Int
+
+  @@map("reviews")
+}
+
+// Note: SQLite doesn't support enums, so we use String with default values
+// Role options: "CLIENT", "PROVIDER", "ADMIN"
+// BookingStatus options: "PENDING", "ACCEPTED", "COMPLETED", "CANCELLED", "REFUNDED"  
+// ServiceCategory options: "ELECTRICAL", "PLUMBING", "CARPENTRY", "PAINTING", "CLEANING", "HVAC", "LANDSCAPING", "HANDYMAN", "OTHER"
