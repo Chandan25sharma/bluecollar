@@ -2,6 +2,14 @@
 
 A comprehensive platform connecting clients with verified blue-collar service providers (electricians, plumbers, carpenters, etc.).
 
+## 🚀 Quick Setup Guide
+
+### Prerequisites
+- **Node.js 18+** ([Download here](https://nodejs.org/))
+- **Git** ([Download here](https://git-scm.com/))
+- **Supabase account** (free at [supabase.com](https://supabase.com))
+
+### 📋 Step-by-Step Setup
 
 #### 1. Clone the Repository
 ```bash
@@ -131,7 +139,7 @@ npm run dev
 2. **Backend API**: Test [http://localhost:4001/api/auth/verify-token](http://localhost:4001/api/auth/verify-token)
 3. **Database**: Check Supabase dashboard for created tables
 
-### Test Users (after seeding)
+### 🔑 Test Users (after seeding)
 
 The database includes these test accounts:
 - **Admin**: `admin@bluecollar.local` / `admin123`
@@ -161,152 +169,61 @@ bluecollar/
 └── README.md
 ```
 
-## 🛠 Tech Stack
+# Or individually:
+npm run dev:frontend  # http://localhost:3000
+npm run dev:backend   # http://localhost:4001/api
+```
+
+## Tech Stack
 
 ### Frontend
 - **Next.js 14** (App Router)
 - **TypeScript**
 - **Tailwind CSS**
 - **Axios** (API client)
-- **Supabase Client**
 
 ### Backend
-- **NestJS** (Node.js framework)
-- **Prisma ORM** (Database toolkit)
-- **Supabase PostgreSQL** (Database)
+- **NestJS**
+- **Prisma ORM**
+- **Supabase (PostgreSQL)**
 - **JWT Authentication**
 - **bcrypt** (Password hashing)
-- **Passport.js** (Authentication middleware)
 
 ### Database
-- **Supabase PostgreSQL** (Cloud database)
+- **Supabase PostgreSQL**
 - **Prisma** (ORM & Migrations)
 
-## Available Scripts
+## Environment Variables
 
-### Root Directory
-```bash
-npm run dev              # Start both frontend & backend
-npm run dev:frontend     # Start only frontend
-npm run dev:backend      # Start only backend
-npm install             # Install all dependencies
-```
+See `.env.example` for required environment variables.
 
-### Backend (`cd backend`)
-```bash
-npm run start:dev       # Start in development mode
-npm run build          # Build for production
-npx prisma generate    # Generate Prisma client
-npx prisma migrate dev # Create and apply migration
-npx prisma studio      # Open Prisma Studio (database GUI)
-npx prisma db seed     # Seed database with test data
-```
+## Documentation
 
-### Frontend (`cd frontend`)
-```bash
-npm run dev            # Start development server
-npm run build          # Build for production
-npm run start          # Start production server
-```
+- [API Documentation](./docs/api-spec.md)
+- [Database Schema](./docs/db-schema.md)
 
-## 🔧 Troubleshooting
+## Features
 
-### Common Issues
+- ✅ User Authentication (JWT)
+- ✅ Role-based Access (Client/Provider/Admin)
+- 🔄 Service Listings
+- 🔄 Booking System
+- 🔄 Payment Integration (Escrow)
+- 🔄 Review System
+- 🔄 Admin Dashboard
 
-**1. Port Already in Use**
-```bash
-# Kill process on port 4001 (backend)
-npx kill-port 4001
+## API Endpoints
 
-# Kill process on port 3000 (frontend)  
-npx kill-port 3000
-```
-
-**2. Database Connection Errors**
-- Verify your DATABASE_URL in `backend/.env`
-- Check your Supabase project is active
-- Ensure password doesn't contain special characters that need URL encoding
-
-**3. Prisma Client Errors**
-```bash
-cd backend
-npx prisma generate
-npx prisma db push
-```
-
-**4. Frontend Build Errors**
-```bash
-cd frontend
-rm -rf .next
-npm run dev
-```
-
-**5. Environment Variables Not Loading**
-- Ensure `.env` files are in correct directories
-- Restart servers after changing environment variables
-- Check for typos in variable names
-
-### Reset Everything
-```bash
-# Reset database
-cd backend
-npx prisma migrate reset
-
-# Clean install
-cd ..
-rm -rf node_modules frontend/node_modules backend/node_modules
-npm install
-cd backend && npm install
-cd ../frontend && npm install
-```
-
-##  API Endpoints
-
-### Authentication
 - `POST /api/auth/signup` - User registration
-- `POST /api/auth/login` - User login  
-- `GET /api/auth/me` - Get current user profile
-- `GET /api/auth/verify-token` - Verify JWT token
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
+- More endpoints coming...
 
-### Future Endpoints (Coming Soon)
-- `GET /api/services` - List all services
-- `POST /api/services` - Create new service
-- `GET /api/bookings` - User bookings
-- `POST /api/bookings` - Create booking
-
-##  Features Status
-
-- ✅ **User Authentication** (Signup/Login/JWT)
-- ✅ **Role-based Access** (Client/Provider/Admin)
-- ✅ **Database Schema** (Users/Services/Bookings/Reviews)
-- ✅ **Responsive UI** (Landing page, Auth pages)
-- 🔄 **Service Listings** (In Progress)
-- 🔄 **Booking System** (Planned)
-- 🔄 **Payment Integration** (Planned)
-- 🔄 **Review System** (Planned)
-- 🔄 **Admin Dashboard** (Planned)
-
-##  Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit changes (`git commit -m 'Add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
-
-## License
-
-This project is licensed under the MIT License.
-
-##  Support
-
-If you encounter any issues:
-1. Check the troubleshooting section above
-2. Verify all environment variables are set correctly
-3. Ensure Supabase project is properly configured
-4. Create an issue on GitHub with detailed error information
-
----
-
-**Happy Coding! **
 

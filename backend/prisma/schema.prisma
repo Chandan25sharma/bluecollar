@@ -1,97 +1,136 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+enum Role {
+  CLIENT
+  PROVIDER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+enum AdminRole {
+  SUPER
+  FINANCE
+  KYC
+  SUPPORT
 }
 
 model User {
-  id         Int       @id @default(autoincrement())
-  name       String
-  email      String    @unique
-  phone      String? 
-  password   String
-  role       String    @default("CLIENT")
-  verified   Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  
-  // Relations
-  services   Service[] 
-  bookingsAsClient   Booking[] @relation("ClientBookings")
-  bookingsAsProvider Booking[] @relation("ProviderBookings")
-  reviews            Review[]  @relation("UserReviews")
-  reviewsReceived    Review[]  @relation("ReviewsReceived")
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  phone     String   @unique
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@map("users")
+  clientProfile   ClientProfile?
+  providerProfile ProviderProfile?
+  adminProfile    AdminProfile?
+}
+
+model ClientProfile {
+  id     String @id @default(uuid())
+  name   String
+  age    Int?
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  bookings Booking[]
+  reviews  Review[]
+}
+
+model ProviderProfile {
+  id        String @id @default(uuid())
+  name      String
+  skills    String[]
+  rate      Float
+  verified  Boolean @default(false)
+  bankName  String?
+  bankAcc   String?
+  govIdUrl  String?
+  user      User   @relation(fields: [userId], references: [id])
+  userId    String
+
+  services  Service[]
+  bookings  Booking[]
+  reviews   Review[]
+  payouts   Payout[]
+}
+
+model AdminProfile {
+  id        String    @id @default(uuid())
+  role      AdminRole
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
 }
 
 model Service {
-  id          Int      @id @default(autoincrement())
+  id          String           @id @default(uuid())
   title       String
-  description String?
+  description String
   price       Float
-  category    String
-  location    String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  provider    User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  providerId  Int
-  bookings    Booking[]
-  reviews     Review[]
+  createdAt   DateTime         @default(now())
+  provider    ProviderProfile  @relation(fields: [providerId], references: [id])
+  providerId  String
 
-  @@map("services")
+  bookings    Booking[]
 }
 
 model Booking {
-  id           Int           @id @default(autoincrement())
-  scheduledAt  DateTime
-  completedAt  DateTime?
-  totalAmount  Float
-  status       String        @default("PENDING")
-  notes        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  
-  // Relations
-  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId    Int
-  client       User     @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Cascade)
-  clientId     Int
-  provider     User     @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Cascade)
-  providerId   Int
-  review       Review?
+  id         String          @id @default(uuid())
+  status     BookingStatus   @default(PENDING)
+  date       DateTime
+  client     ClientProfile   @relation(fields: [clientId], references: [id])
+  clientId   String
+  provider   ProviderProfile @relation(fields: [providerId], references: [id])
+  providerId String
+  service    Service         @relation(fields: [serviceId], references: [id])
+  serviceId  String
 
-  @@map("bookings")
+  review     Review?
+  payment    Payment?
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  amount      Float
+  commission  Float
+  status      String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  bookingId   String
+  createdAt   DateTime @default(now())
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
-  rating    Int      // 1-5 stars
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  bookingId Int      @unique
-  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId Int
-  reviewer  User     @relation("UserReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
-  reviewerId Int
-  reviewee  User     @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
-  revieweeId Int
-
-  @@map("reviews")
+  id         String          @id @default(uuid())
+  rating     Int
+  comment    String?
+  client     ClientProfile   @relation(fields: [clientId], references: [id])
+  clientId   String
+  provider   ProviderProfile @relation(fields: [providerId], references: [id])
+  providerId String
+  booking    Booking?        @relation(fields: [bookingId], references: [id])
+  bookingId  String?
 }
 
-// Note: SQLite doesn't support enums, so we use String with default values
-// Role options: "CLIENT", "PROVIDER", "ADMIN"
-// BookingStatus options: "PENDING", "ACCEPTED", "COMPLETED", "CANCELLED", "REFUNDED"  
-// ServiceCategory options: "ELECTRICAL", "PLUMBING", "CARPENTRY", "PAINTING", "CLEANING", "HVAC", "LANDSCAPING", "HANDYMAN", "OTHER"
+model Payout {
+  id         String          @id @default(uuid())
+  amount     Float
+  status     String
+  provider   ProviderProfile @relation(fields: [providerId], references: [id])
+  providerId String
+  createdAt  DateTime @default(now())
+}
