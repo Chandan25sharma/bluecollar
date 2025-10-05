@@ -1,228 +1,90 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Header from "../../components/Header";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import {
-  FiSearch,
-  FiStar,
-  FiClock,
-  FiCheckCircle,
-  FiUsers,
   FiArrowRight,
-  FiFilter,
-  FiX,
-  FiGrid,
-  FiMapPin,
-  FiCalendar,
-  FiHeart,
   FiChevronDown,
   FiChevronUp,
+  FiClock,
+  FiGrid,
+  FiSearch,
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
+import Header from "../../components/Header";
+import { servicesAPI } from "../../lib/api";
 
 interface Service {
   id: string;
   title: string;
   description: string;
   price: number;
-  rating: number;
-  reviews: number;
   category: string;
   duration: string;
-  provider: string;
-  providerRating: number;
-  featured: boolean;
-  popular: boolean;
-  saved?: boolean;
+  isActive: boolean;
+  provider?: {
+    id: string;
+    businessName: string;
+  };
 }
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("popular");
   const [priceRange, setPriceRange] = useState([0, 1000]);
-  const [ratingFilter, setRatingFilter] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    // Mock data with more details
-    setServices([
-      {
-        id: "1",
-        title: "Professional Electrical Wiring Installation",
-        description:
-          "Complete home electrical wiring solutions with safety certification and compliance with all local codes.",
-        price: 120,
-        rating: 4.8,
-        reviews: 124,
-        category: "electrical",
-        duration: "2-4 hours",
-        provider: "Elite Electricians",
-        providerRating: 4.9,
-        featured: true,
-        popular: true,
-        saved: false,
-      },
-      {
-        id: "2",
-        title: "Emergency Plumbing Repair Service",
-        description:
-          "24/7 available plumbing services for leaks, clogs, pipe repairs, and fixture installations.",
-        price: 85,
-        rating: 4.7,
-        reviews: 98,
-        category: "plumbing",
-        duration: "1-3 hours",
-        provider: "QuickFlow Plumbing",
-        providerRating: 4.8,
-        featured: false,
-        popular: true,
-        saved: true,
-      },
-      {
-        id: "3",
-        title: "Custom Furniture Carpentry Workshop",
-        description:
-          "Handcrafted furniture pieces tailored to your specifications using premium quality materials.",
-        price: 200,
-        rating: 4.9,
-        reviews: 76,
-        category: "carpentry",
-        duration: "4-8 hours",
-        provider: "Artisan Woodworks",
-        providerRating: 4.9,
-        featured: true,
-        popular: false,
-        saved: false,
-      },
-      {
-        id: "4",
-        title: "Expert Tailoring & Alteration Services",
-        description:
-          "Custom clothing alterations, repairs, and creations with premium fabrics and precision stitching.",
-        price: 45,
-        rating: 4.6,
-        reviews: 203,
-        category: "tailoring",
-        duration: "1-2 hours",
-        provider: "Precision Stitches",
-        providerRating: 4.7,
-        featured: false,
-        popular: true,
-        saved: false,
-      },
-      {
-        id: "5",
-        title: "HVAC System Installation & Maintenance",
-        description:
-          "Professional heating and cooling system installation, maintenance, and repair services.",
-        price: 300,
-        rating: 4.8,
-        reviews: 87,
-        category: "hvac",
-        duration: "3-5 hours",
-        provider: "Climate Control Experts",
-        providerRating: 4.8,
-        featured: true,
-        popular: false,
-        saved: false,
-      },
-      {
-        id: "6",
-        title: "Premium Home Painting Services",
-        description:
-          "Interior and exterior painting with color consultation, surface preparation, and clean finish.",
-        price: 150,
-        rating: 4.5,
-        reviews: 112,
-        category: "painting",
-        duration: "4-6 hours",
-        provider: "Color Masters",
-        providerRating: 4.6,
-        featured: false,
-        popular: true,
-        saved: false,
-      },
-      {
-        id: "7",
-        title: "Smart Home Automation Setup",
-        description:
-          "Professional installation and configuration of smart home devices and automation systems.",
-        price: 250,
-        rating: 4.9,
-        reviews: 67,
-        category: "electrical",
-        duration: "3-4 hours",
-        provider: "TechHome Solutions",
-        providerRating: 4.9,
-        featured: true,
-        popular: true,
-        saved: false,
-      },
-      {
-        id: "8",
-        title: "Bathroom Renovation & Remodeling",
-        description:
-          "Complete bathroom remodeling services including plumbing, tiling, and fixture installation.",
-        price: 500,
-        rating: 4.7,
-        reviews: 89,
-        category: "plumbing",
-        duration: "6-8 hours",
-        provider: "Renovation Pros",
-        providerRating: 4.7,
-        featured: false,
-        popular: false,
-        saved: false,
-      },
-    ]);
+    fetchServices();
 
     // Handle scroll for navbar effect
     const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
+      setScrolled(window.scrollY > 10);
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      const response = await servicesAPI.getServices();
+      // Filter only active services
+      const activeServices = response.data.filter((s: Service) => s.isActive);
+      setServices(activeServices);
+    } catch (error) {
+      console.error("Failed to fetch services:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const categories = [
     { id: "all", name: "All Services", icon: <FiGrid className="text-sm" /> },
-    { id: "electrical", name: "Electrical", icon: "⚡" },
-    { id: "plumbing", name: "Plumbing", icon: "🚰" },
-    { id: "carpentry", name: "Carpentry", icon: "🛠️" },
-    { id: "tailoring", name: "Tailoring", icon: "🧵" },
-    { id: "hvac", name: "HVAC", icon: "❄️" },
-    { id: "painting", name: "Painting", icon: "🎨" },
+    { id: "Electrical", name: "Electrical", icon: "⚡" },
+    { id: "Plumbing", name: "Plumbing", icon: "🚰" },
+    { id: "Cleaning", name: "Cleaning", icon: "🧹" },
+    { id: "Carpentry", name: "Carpentry", icon: "🛠️" },
+    { id: "HVAC", name: "HVAC", icon: "❄️" },
+    { id: "Painting", name: "Painting", icon: "🎨" },
   ];
 
   const sortOptions = [
-    { id: "popular", name: "Most Popular" },
-    { id: "rating", name: "Highest Rated" },
     { id: "price-low", name: "Price: Low to High" },
     { id: "price-high", name: "Price: High to Low" },
+    { id: "title", name: "Alphabetical" },
   ];
-
-  const toggleSaveService = (id: string) => {
-    setServices(
-      services.map((service) =>
-        service.id === id ? { ...service, saved: !service.saved } : service
-      )
-    );
-  };
 
   const filteredServices = services
     .filter((service) => {
       const matchesSearch =
         service.title.toLowerCase().includes(search.toLowerCase()) ||
         service.description.toLowerCase().includes(search.toLowerCase()) ||
-        service.provider.toLowerCase().includes(search.toLowerCase());
+        service.category.toLowerCase().includes(search.toLowerCase());
 
       const matchesCategory =
         selectedCategory === "all" || service.category === selectedCategory;
@@ -230,52 +92,20 @@ export default function ServicesPage() {
       const matchesPrice =
         service.price >= priceRange[0] && service.price <= priceRange[1];
 
-      const matchesRating = service.rating >= ratingFilter;
-
-      return matchesSearch && matchesCategory && matchesPrice && matchesRating;
+      return matchesSearch && matchesCategory && matchesPrice;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case "rating":
-          return b.rating - a.rating;
         case "price-low":
           return a.price - b.price;
         case "price-high":
           return b.price - a.price;
-        case "popular":
+        case "title":
+          return a.title.localeCompare(b.title);
         default:
-          if (a.popular && !b.popular) return -1;
-          if (!a.popular && b.popular) return 1;
-          return b.reviews - a.reviews;
+          return 0;
       }
     });
-
-  const renderStars = (rating: number, size = "sm") => {
-    const starSize = size === "sm" ? "h-3 w-3" : "h-4 w-4";
-    return (
-      <div className="flex items-center">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <svg
-            key={star}
-            className={`${starSize} ${
-              star <= Math.floor(rating) ? "text-amber-400" : "text-gray-300"
-            }`}
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-        ))}
-        <span
-          className={`ml-1 ${
-            size === "sm" ? "text-xs" : "text-sm"
-          } text-gray-600`}
-        >
-          {rating.toFixed(1)}
-        </span>
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -381,22 +211,6 @@ export default function ServicesPage() {
               />
             </div>
 
-            {/* Rating */}
-            <div className="mb-6">
-              <h4 className="font-semibold text-gray-700 text-xs uppercase mb-3">
-                Minimum Rating
-              </h4>
-              <select
-                value={ratingFilter}
-                onChange={(e) => setRatingFilter(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value={0}>All Ratings</option>
-                <option value={4}>4+ Stars</option>
-                <option value={4.5}>4.5+ Stars</option>
-              </select>
-            </div>
-
             {/* Sort By */}
             <div>
               <h4 className="font-semibold text-gray-700 text-xs uppercase mb-3">
@@ -477,7 +291,6 @@ export default function ServicesPage() {
                             // Reset all filters
                             setSelectedCategory("all");
                             setPriceRange([0, 1000]);
-                            setRatingFilter(0);
                             setSortBy(sortOptions[0]?.id || "");
                           }}
                           className="px-3 py-1 border border-green-600 text-green-600 rounded-xl text-sm font-medium hover:bg-green-50 transition"
@@ -538,26 +351,6 @@ export default function ServicesPage() {
 
                     <hr className="my-4 border-gray-200" />
 
-                    {/* Minimum Rating */}
-                    <div className="mb-6">
-                      <h4 className="font-semibold text-gray-700 text-sm mb-3 uppercase tracking-wider">
-                        Minimum Rating
-                      </h4>
-                      <select
-                        value={ratingFilter}
-                        onChange={(e) =>
-                          setRatingFilter(Number(e.target.value))
-                        }
-                        className="w-full border border-gray-300 rounded-xl p-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      >
-                        <option value={0}>All Ratings</option>
-                        <option value={4}>4+ Stars</option>
-                        <option value={4.5}>4.5+ Stars</option>
-                      </select>
-                    </div>
-
-                    <hr className="my-4 border-gray-200" />
-
                     {/* Sort By */}
                     <div className="mb-6">
                       <h4 className="font-semibold text-gray-700 text-sm mb-3 uppercase tracking-wider">
@@ -605,16 +398,18 @@ export default function ServicesPage() {
                   "All",
                   "Electrical",
                   "Plumbing",
+                  "Cleaning",
                   "Carpentry",
-                  "Tailoring",
                   "HVAC",
                   "Painting",
                 ].map((cat) => (
                   <button
                     key={cat}
-                    onClick={() => setSelectedCategory(cat.toLowerCase())}
+                    onClick={() =>
+                      setSelectedCategory(cat === "All" ? "all" : cat)
+                    }
                     className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition ${
-                      selectedCategory === cat.toLowerCase()
+                      selectedCategory === (cat === "All" ? "all" : cat)
                         ? "bg-green-600 text-white shadow-md"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
@@ -624,85 +419,108 @@ export default function ServicesPage() {
                 ))}
               </div>
 
-              {/* Services Grid */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-4 gap-4"
-              >
-                {filteredServices
-                  .filter(
-                    (s) =>
-                      selectedCategory === "all" ||
-                      s.category === selectedCategory
-                  )
-                  .map((service) => (
-                    <motion.div
-                      whileHover={{ y: -5 }}
-                      key={service.id}
-                      className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all"
-                    >
-                      {/* Service Image/Header */}
-                      <div
-                        className={`h-40 flex items-center justify-center text-white bg-gradient-to-br ${
-                          service.category === "electrical"
-                            ? "from-blue-400 to-purple-500"
-                            : service.category === "plumbing"
-                            ? "from-blue-400 to-cyan-500"
-                            : service.category === "carpentry"
-                            ? "from-amber-400 to-orange-500"
-                            : service.category === "tailoring"
-                            ? "from-pink-400 to-rose-500"
-                            : service.category === "hvac"
-                            ? "from-cyan-400 to-blue-500"
-                            : "from-green-400 to-teal-500"
-                        }`}
-                      >
-                        <span className="text-4xl">
-                          {service.category === "electrical" && "⚡"}
-                          {service.category === "plumbing" && "🚰"}
-                          {service.category === "carpentry" && "🛠️"}
-                          {service.category === "tailoring" && "🧵"}
-                          {service.category === "hvac" && "❄️"}
-                          {service.category === "painting" && "🎨"}
-                        </span>
-                      </div>
-
-                      {/* Service Content */}
-                      <div className="p-5">
-                        <h3 className="font-bold text-gray-800 text-sm mb-2 line-clamp-2">
-                          {service.title}
-                        </h3>
-                        <p className="text-gray-600 text-xs mb-4 line-clamp-2">
-                          {service.description}
+              {/* Loading State */}
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                  <p className="mt-4 text-gray-600">Loading services...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Services Grid */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="grid grid-cols-1 md:grid-cols-4 gap-4"
+                  >
+                    {filteredServices.length === 0 ? (
+                      <div className="col-span-4 text-center py-12">
+                        <p className="text-gray-600">
+                          No services found matching your criteria.
                         </p>
-
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="text-lg font-bold text-green-600">
-                            ${service.price}
-                          </div>
-                          <div className="flex items-center text-xs text-gray-500">
-                            {renderStars(service.rating, "sm")}
-                            <span className="ml-1">({service.reviews})</span>
-                          </div>
-                        </div>
-
-                        <motion.a
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          href={`/service/${service.id}`}
-                          className="w-full bg-gradient-to-r from-green-600 to-teal-500 text-white py-2.5 rounded-xl font-medium hover:shadow-md flex items-center justify-center text-xs"
-                        >
-                          View Details
-                        </motion.a>
                       </div>
-                    </motion.div>
-                  ))}
-              </motion.div>
+                    ) : (
+                      filteredServices
+                        .filter(
+                          (s) =>
+                            selectedCategory === "all" ||
+                            s.category === selectedCategory
+                        )
+                        .map((service) => (
+                          <motion.div
+                            whileHover={{ y: -5 }}
+                            key={service.id}
+                            className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-all"
+                          >
+                            {/* Service Image/Header */}
+                            <div
+                              className={`h-40 flex items-center justify-center text-white bg-gradient-to-br ${
+                                service.category === "Electrical"
+                                  ? "from-blue-400 to-purple-500"
+                                  : service.category === "Plumbing"
+                                  ? "from-blue-400 to-cyan-500"
+                                  : service.category === "Cleaning"
+                                  ? "from-green-400 to-teal-500"
+                                  : service.category === "Carpentry"
+                                  ? "from-amber-400 to-orange-500"
+                                  : service.category === "HVAC"
+                                  ? "from-cyan-400 to-blue-500"
+                                  : "from-purple-400 to-pink-500"
+                              }`}
+                            >
+                              <span className="text-4xl">
+                                {service.category === "Electrical" && "⚡"}
+                                {service.category === "Plumbing" && "🚰"}
+                                {service.category === "Cleaning" && "🧹"}
+                                {service.category === "Carpentry" && "🛠️"}
+                                {service.category === "HVAC" && "❄️"}
+                                {service.category === "Painting" && "🎨"}
+                              </span>
+                            </div>
+
+                            {/* Service Content */}
+                            <div className="p-5">
+                              <h3 className="font-bold text-gray-800 text-sm mb-2 line-clamp-2">
+                                {service.title}
+                              </h3>
+                              <p className="text-gray-600 text-xs mb-4 line-clamp-2">
+                                {service.description}
+                              </p>
+
+                              <div className="flex justify-between items-center mb-4">
+                                <div className="text-lg font-bold text-green-600">
+                                  ${service.price}
+                                </div>
+                                <div className="flex flex-col items-end text-xs text-gray-500">
+                                  <span className="font-medium text-gray-700">
+                                    {service.category}
+                                  </span>
+                                  <span className="flex items-center mt-1">
+                                    <FiClock className="mr-1" />{" "}
+                                    {service.duration}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <motion.a
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                href={`/service/${service.id}`}
+                                className="w-full bg-gradient-to-r from-green-600 to-teal-500 text-white py-2.5 rounded-xl font-medium hover:shadow-md flex items-center justify-center text-xs"
+                              >
+                                View Details
+                              </motion.a>
+                            </div>
+                          </motion.div>
+                        ))
+                    )}
+                  </motion.div>
+                </>
+              )}
             </div>
 
             {/* Load More (if applicable) */}
-            {filteredServices.length > 0 && (
+            {filteredServices.length > 0 && !loading && (
               <div className="mt-10 text-center">
                 <button className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors text-sm">
                   Load More Services

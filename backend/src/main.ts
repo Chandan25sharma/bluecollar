@@ -1,5 +1,5 @@
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -22,10 +22,12 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   
   const port = process.env.PORT || 4000;
-  await app.listen(port);
+  console.log(`Attempting to listen on port ${port} on all interfaces...`);
   
-  console.log(`Backend running on http://localhost:${port}/api`);
-  console.log(`Database connected successfully`);
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`✅ Backend successfully started on http://localhost:${port}/api`);
+  console.log(`🔗 Database connected successfully`);
 }
 
 bootstrap().catch((error) => {

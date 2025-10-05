@@ -1,5 +1,5 @@
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -7,6 +7,7 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// MongoDB supports enums
 enum Role {
   CLIENT
   PROVIDER
@@ -28,11 +29,12 @@ enum AdminRole {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   password  String
   phone     String   @unique
-  role      Role
+  role      Role     @default(CLIENT)
+  verified  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -42,27 +44,65 @@ model User {
 }
 
 model ClientProfile {
-  id     String @id @default(uuid())
-  name   String
-  age    Int?
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  age       Int?
+  address   String? // Default/Primary address from Google Maps
+  latitude  Float?  // Default location coordinates
+  longitude Float?
+  city      String? // For filtering
+  state     String?
+  zipCode   String?
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String  @unique @db.ObjectId
 
-  bookings Booking[]
-  reviews  Review[]
+  bookings  Booking[]
+  reviews   Review[]
+  addresses ClientAddress[] // Multiple saved addresses
+}
+
+model ClientAddress {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  label          String        // e.g., "Home", "Office", "Parents House"
+  address        String        // Full address from Google Maps
+  latitude       Float
+  longitude      Float
+  city           String?
+  state          String?
+  zipCode        String?
+  isDefault      Boolean       @default(false)
+  client         ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId       String        @db.ObjectId
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 model ProviderProfile {
-  id        String @id @default(uuid())
-  name      String
-  skills    String[]
-  rate      Float
-  verified  Boolean @default(false)
-  bankName  String?
-  bankAcc   String?
-  govIdUrl  String?
-  user      User   @relation(fields: [userId], references: [id])
-  userId    String
+  id                 String                @id @default(auto()) @map("_id") @db.ObjectId
+  name               String
+  skills             String[]              // Array of skills for MongoDB
+  rate               Float
+  verified           Boolean               @default(false)
+  verificationStatus VerificationStatus    @default(PENDING)
+  rejectionReason    String?               // Reason if rejected by admin
+  bankName           String?
+  bankAcc            String?
+  govIdUrl           String?               // Government ID document URL
+  businessLicenseUrl String?               // Business license URL
+  insuranceDocUrl    String?               // Insurance document URL
+  certificationUrls  String[]              @default([]) // Professional certifications
+  address            String?               // Full address from Google Maps
+  latitude           Float?                // Location coordinates
+  longitude          Float?
+  city               String?               // For filtering
+  state              String?
+  zipCode            String?
+  verifiedAt         DateTime?             // When admin approved
+  verifiedBy         String?               @db.ObjectId // Admin who verified
+  user               User                  @relation(fields: [userId], references: [id])
+  userId             String                @unique @db.ObjectId
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
   services  Service[]
   bookings  Booking[]
@@ -70,67 +110,91 @@ model ProviderProfile {
   payouts   Payout[]
 }
 
+enum VerificationStatus {
+  PENDING        // Waiting for admin review
+  APPROVED       // Admin approved - profile visible to clients
+  REJECTED       // Admin rejected - needs resubmission
+  RESUBMITTED    // Provider resubmitted after rejection
+}
+
 model AdminProfile {
-  id        String    @id @default(uuid())
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
   role      AdminRole
   user      User      @relation(fields: [userId], references: [id])
-  userId    String
+  userId    String    @unique @db.ObjectId
 }
 
 model Service {
-  id          String           @id @default(uuid())
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   description String
   price       Float
+  category    String
+  duration    String
+  isActive    Boolean          @default(true)
   createdAt   DateTime         @default(now())
   provider    ProviderProfile  @relation(fields: [providerId], references: [id])
-  providerId  String
+  providerId  String           @db.ObjectId
 
   bookings    Booking[]
 }
 
 model Booking {
-  id         String          @id @default(uuid())
-  status     BookingStatus   @default(PENDING)
-  date       DateTime
-  client     ClientProfile   @relation(fields: [clientId], references: [id])
-  clientId   String
-  provider   ProviderProfile @relation(fields: [providerId], references: [id])
-  providerId String
-  service    Service         @relation(fields: [serviceId], references: [id])
-  serviceId  String
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  status          BookingStatus   @default(PENDING)
+  date            DateTime
+  notes           String?
+  totalAmount     Float
+  distance        Float?          // Distance between client and provider in km
+  
+  // Client booking location (stored at booking time)
+  clientAddress   String?         // Address used for this booking
+  clientLatitude  Float?
+  clientLongitude Float?
+  
+  client          ClientProfile   @relation(fields: [clientId], references: [id])
+  clientId        String          @db.ObjectId
+  provider        ProviderProfile @relation(fields: [providerId], references: [id])
+  providerId      String          @db.ObjectId
+  service         Service         @relation(fields: [serviceId], references: [id])
+  serviceId       String          @db.ObjectId
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   review     Review?
   payment    Payment?
 }
 
 model Payment {
-  id          String   @id @default(uuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   amount      Float
   commission  Float
-  status      String
+  status      String   @default("PENDING")
+  method      String   @default("CASH") // For now, hardcoded payment method
   booking     Booking  @relation(fields: [bookingId], references: [id])
-  bookingId   String
+  bookingId   String   @unique @db.ObjectId
   createdAt   DateTime @default(now())
 }
 
 model Review {
-  id         String          @id @default(uuid())
+  id         String          @id @default(auto()) @map("_id") @db.ObjectId
   rating     Int
   comment    String?
+  helpful    Int             @default(0)
   client     ClientProfile   @relation(fields: [clientId], references: [id])
-  clientId   String
+  clientId   String          @db.ObjectId
   provider   ProviderProfile @relation(fields: [providerId], references: [id])
-  providerId String
+  providerId String          @db.ObjectId
   booking    Booking?        @relation(fields: [bookingId], references: [id])
-  bookingId  String?
+  bookingId  String?         @unique @db.ObjectId
+  createdAt  DateTime        @default(now())
 }
 
 model Payout {
-  id         String          @id @default(uuid())
+  id         String          @id @default(auto()) @map("_id") @db.ObjectId
   amount     Float
-  status     String
+  status     String          @default("PENDING")
   provider   ProviderProfile @relation(fields: [providerId], references: [id])
-  providerId String
-  createdAt  DateTime @default(now())
+  providerId String          @db.ObjectId
+  createdAt  DateTime        @default(now())
 }

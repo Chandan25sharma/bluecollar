@@ -5,6 +5,7 @@ A comprehensive platform connecting clients with verified blue-collar service pr
 ## 🚀 Quick Setup Guide
 
 ### Prerequisites
+
 - **Node.js 18+** ([Download here](https://nodejs.org/))
 - **Git** ([Download here](https://git-scm.com/))
 - **Supabase account** (free at [supabase.com](https://supabase.com))
@@ -12,12 +13,14 @@ A comprehensive platform connecting clients with verified blue-collar service pr
 ### 📋 Step-by-Step Setup
 
 #### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/YOUR_USERNAME/bluecollar.git
 cd bluecollar
 ```
 
 #### 2. Install Dependencies
+
 ```bash
 # Install all dependencies for both frontend and backend
 npm install
@@ -37,6 +40,7 @@ cd ..
 #### 3. Setup Supabase Database
 
 **3.1. Create Supabase Project:**
+
 1. Go to [supabase.com](https://supabase.com) and sign up
 2. Click "New Project"
 3. Choose organization and fill details:
@@ -46,12 +50,14 @@ cd ..
 4. Click "Create new project" (takes 1-2 minutes)
 
 **3.2. Get Your Credentials:**
+
 1. In your Supabase dashboard, go to **Settings** → **API**
 2. Copy these values:
    - **Project URL**: `https://your-project-ref.supabase.co`
    - **Project API Keys** → **anon public**: `eyJ...`
 
 **3.3. Get Database Connection String:**
+
 1. Go to **Settings** → **Database**
 2. Scroll down to **Connection string** → **URI**
 3. Copy the connection string (it includes your password)
@@ -61,6 +67,7 @@ cd ..
 **4.1. Backend Configuration:**
 
 Create/update `backend/.env`:
+
 ```bash
 # Database Configuration (Supabase PostgreSQL)
 DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@db.your-project-ref.supabase.co:5432/postgres"
@@ -82,6 +89,7 @@ NODE_ENV=development
 **4.2. Frontend Configuration:**
 
 Create `frontend/.env.local`:
+
 ```bash
 # API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:4001/api
@@ -113,6 +121,7 @@ cd ..
 #### 6. Start the Application
 
 **Option 1: Start both servers together (Recommended)**
+
 ```bash
 # From root directory
 npm run dev
@@ -123,12 +132,13 @@ npm run dev
 ```
 
 **Option 2: Start servers individually**
+
 ```bash
 # Terminal 1 - Backend
 cd backend
 npm run start:dev
 
-# Terminal 2 - Frontend  
+# Terminal 2 - Frontend
 cd frontend
 npm run dev
 ```
@@ -142,6 +152,7 @@ npm run dev
 ### 🔑 Test Users (after seeding)
 
 The database includes these test accounts:
+
 - **Admin**: `admin@bluecollar.local` / `admin123`
 - **Provider**: `provider@bluecollar.local` / `provider123`
 - **Client**: `client@bluecollar.local` / `client123`
@@ -170,8 +181,10 @@ bluecollar/
 ```
 
 # Or individually:
-npm run dev:frontend  # http://localhost:3000
-npm run dev:backend   # http://localhost:4001/api
+
+npm run dev:frontend # http://localhost:3000
+npm run dev:backend # http://localhost:4001/api
+
 ```
 
 ## Tech Stack
@@ -227,3 +240,4 @@ See `.env.example` for required environment variables.
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
+```

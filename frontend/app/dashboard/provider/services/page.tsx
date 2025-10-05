@@ -1,23 +1,20 @@
 "use client";
 
 import ProviderHeader from "components/ProviderHeader";
-import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import {
-  FiPlus,
+  FiChevronDown,
+  FiClock,
   FiEdit,
-  FiTrash2,
+  FiGrid,
+  FiPlus,
+  FiSearch,
   FiToggleLeft,
   FiToggleRight,
+  FiTrash2,
   FiX,
-  FiSearch,
-  FiFilter,
-  FiClock,
-  FiDollarSign,
-  FiGrid,
-  FiCheck,
-  FiChevronDown,
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface Service {
   id: string;
@@ -423,9 +420,15 @@ export default function ProviderServicesPage() {
     );
   };
 
-  function handleDelete(id: any): void {
-    throw new Error("Function not implemented.");
-  }
+  const handleDelete = (id: string): void => {
+    // Remove service from the array
+    setServices(services.filter((service) => service.id !== id));
+
+    // If we're currently editing this service, cancel the edit
+    if (editingService && editingService.id === id) {
+      handleCancelEdit();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -541,7 +544,9 @@ export default function ProviderServicesPage() {
                     return (
                       <button
                         key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
+                        onClick={() =>
+                          setActiveTab(tab.key as "all" | "active" | "inactive")
+                        }
                         className={`
               px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium rounded-full transition-all
               ${

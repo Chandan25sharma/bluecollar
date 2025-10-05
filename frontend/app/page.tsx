@@ -1,143 +1,71 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Footer from "../components/Footer";
-import Header from "../components/Header";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import {
+  FiArrowRight,
+  FiClock,
+  FiGrid,
   FiSearch,
   FiStar,
-  FiClock,
-  FiCheckCircle,
-  FiUsers,
-  FiArrowRight,
-  FiMenu,
-  FiX,
-  FiGrid,
-  FiMapPin,
-  FiCalendar,
-  FiHome,
-  FiTool,
   FiUser,
-  FiHeart,
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+import { servicesAPI } from "../lib/api";
 
 interface Service {
   id: string;
   title: string;
   description: string;
   price: number;
-  rating: number;
-  reviews: number;
   category: string;
-  deliveryTime: string;
+  duration: string;
+  isActive: boolean;
 }
 
 export default function LandingPage() {
   const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    // Mock data for demonstration
-    const mockServices: Service[] = [
-      {
-        id: "1",
-        title: "Professional Electrical Wiring",
-        description:
-          "Complete home electrical wiring solutions with safety certification",
-        price: 120,
-        rating: 4.8,
-        reviews: 124,
-        category: "electrical",
-        deliveryTime: "2-3 hours",
-      },
-      {
-        id: "2",
-        title: "Emergency Plumbing Repair",
-        description:
-          "24/7 available plumbing services for leaks, clogs, and installations",
-        price: 85,
-        rating: 4.7,
-        reviews: 98,
-        category: "plumbing",
-        deliveryTime: "1-2 hours",
-      },
-      {
-        id: "3",
-        title: "Custom Furniture Carpentry",
-        description:
-          "Handcrafted furniture pieces tailored to your specifications",
-        price: 200,
-        rating: 4.9,
-        reviews: 76,
-        category: "carpentry",
-        deliveryTime: "3-5 days",
-      },
-      {
-        id: "4",
-        title: "Expert Tailoring Services",
-        description:
-          "Custom clothing alterations and creations with premium fabrics",
-        price: 45,
-        rating: 4.6,
-        reviews: 203,
-        category: "tailoring",
-        deliveryTime: "2-4 days",
-      },
-      {
-        id: "5",
-        title: "HVAC System Installation",
-        description:
-          "Professional heating and cooling system installation and maintenance",
-        price: 300,
-        rating: 4.8,
-        reviews: 87,
-        category: "hvac",
-        deliveryTime: "1 day",
-      },
-      {
-        id: "6",
-        title: "Home Painting Services",
-        description: "Interior and exterior painting with color consultation",
-        price: 150,
-        rating: 4.5,
-        reviews: 112,
-        category: "painting",
-        deliveryTime: "2-3 days",
-      },
-    ];
-
-    setServices(mockServices);
-
-    // Handle scroll for navbar effect
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    // Fetch real services from API
+    fetchServices();
   }, []);
+
+  const fetchServices = async () => {
+    setLoading(true);
+    try {
+      const response = await servicesAPI.getServices();
+      // Filter only active services
+      const activeServices = response.data.filter((s: Service) => s.isActive);
+      setServices(activeServices);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      // Set empty array on error
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = [
     { id: "all", name: "All Services", icon: <FiGrid className="text-sm" /> },
-    { id: "electrical", name: "Electrical", icon: "⚡" },
-    { id: "plumbing", name: "Plumbing", icon: "🚰" },
-    { id: "carpentry", name: "Carpentry", icon: "🛠️" },
-    { id: "tailoring", name: "Tailoring", icon: "🧵" },
-    { id: "hvac", name: "HVAC", icon: "❄️" },
-    { id: "painting", name: "Painting", icon: "🎨" },
+    { id: "Electrical", name: "Electrical", icon: "⚡" },
+    { id: "Plumbing", name: "Plumbing", icon: "🚰" },
+    { id: "Cleaning", name: "Cleaning", icon: "🧹" },
+    { id: "Carpentry", name: "Carpentry", icon: "🛠️" },
+    { id: "HVAC", name: "HVAC", icon: "❄️" },
+    { id: "Painting", name: "Painting", icon: "🎨" },
   ];
 
   const filteredServices = services.filter(
     (s) =>
-      s.title.toLowerCase().includes(search.toLowerCase()) &&
+      (s.title.toLowerCase().includes(search.toLowerCase()) ||
+        s.description.toLowerCase().includes(search.toLowerCase()) ||
+        s.category.toLowerCase().includes(search.toLowerCase())) &&
       (selectedCategory === "all" || s.category === selectedCategory)
   );
 
@@ -308,7 +236,12 @@ export default function LandingPage() {
               Popular Services
             </h3>
 
-            {filteredServices.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12 bg-white rounded-2xl shadow-sm">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                <div className="text-gray-600 text-sm">Loading services...</div>
+              </div>
+            ) : filteredServices.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-2xl shadow-sm">
                 <div className="text-gray-400 mb-3 text-sm">
                   No services found
@@ -353,17 +286,13 @@ export default function LandingPage() {
 
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
-                        <FiStar className="text-yellow-400 mr-1 text-xs" />
-                        <span className="font-medium text-xs">
-                          {service.rating}
-                        </span>
-                        <span className="text-gray-500 ml-1 text-xs">
-                          ({service.reviews})
+                        <span className="text-gray-600 text-xs font-medium">
+                          {service.category}
                         </span>
                       </div>
                       <div className="flex items-center text-gray-500 text-xs">
                         <FiClock className="mr-1 text-xs" />
-                        <span>{service.deliveryTime}</span>
+                        <span>{service.duration}</span>
                       </div>
                     </div>
 

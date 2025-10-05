@@ -1,28 +1,38 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FiMail, FiLock, FiUser, FiLoader } from "react-icons/fi";
+import { useState } from "react";
+import { FiLoader, FiLock, FiMail, FiPhone, FiUser } from "react-icons/fi";
+import { authUtils } from "../../../lib/auth";
 
 export default function ClientSignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({
-    name: "",
     email: "",
     password: "",
     confirmPassword: "",
+    phone: "",
+    name: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const validate = () => {
-    if (!form.name || !form.email || !form.password || !form.confirmPassword)
+    if (
+      !form.name ||
+      !form.email ||
+      !form.password ||
+      !form.confirmPassword ||
+      !form.phone
+    )
       return "All fields are required.";
     if (!/\S+@\S+\.\S+/.test(form.email)) return "Invalid email address.";
     if (form.password.length < 6)
       return "Password must be at least 6 characters.";
     if (form.password !== form.confirmPassword)
       return "Passwords do not match.";
+    if (!/^\+?[\d\s\-\(\)]+$/.test(form.phone))
+      return "Please enter a valid phone number.";
     return "";
   };
 
@@ -38,27 +48,18 @@ export default function ClientSignupPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          role: "client",
-        }),
+      const authData = await authUtils.signup({
+        email: form.email,
+        password: form.password,
+        phone: form.phone,
+        name: form.name,
+        role: "CLIENT",
       });
 
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.message || "Signup failed");
-
-      // ✅ Save token if backend returns it (or fetch login separately)
-      // localStorage.setItem("token", data.token);
-
-      router.push("/client/login"); // redirect to login after signup
+      // Redirect to client dashboard
+      router.push("/dashboard/client");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -110,6 +111,21 @@ export default function ClientSignupPage() {
           </div>
         </div>
 
+        {/* Phone */}
+        <div className="mb-4">
+          <label className="block text-gray-600 mb-1">Phone Number</label>
+          <div className="flex items-center border rounded-lg px-3">
+            <FiPhone className="text-gray-400" />
+            <input
+              type="tel"
+              placeholder="+1 (555) 123-4567"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="w-full px-2 py-3 focus:outline-none"
+            />
+          </div>
+        </div>
+
         {/* Password */}
         <div className="mb-4">
           <label className="block text-gray-600 mb-1">Password</label>
@@ -148,11 +164,7 @@ export default function ClientSignupPage() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold flex justify-center items-center hover:bg-blue-700 transition"
         >
-          {loading ? (
-            <FiLoader className="animate-spin text-xl" />
-          ) : (
-            "Sign Up"
-          )}
+          {loading ? <FiLoader className="animate-spin text-xl" /> : "Sign Up"}
         </button>
 
         {/* Links */}

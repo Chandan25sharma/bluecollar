@@ -1,613 +1,777 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import ProviderHeader from "../../../components/ProviderHeader";
-import {
-  FiCalendar,
-  FiClock,
-  FiDollarSign,
-  FiStar,
-  FiUser,
-  FiCheckCircle,
-  FiXCircle,
-  FiPlayCircle,
-  FiInfo,
-  FiArrowRight,
-  FiGrid,
-  FiMapPin,
-  FiHome,
-  FiTool,
-  FiChevronDown,
+import { bookingsAPI, profileAPI, servicesAPI } from "../../../lib/api";
+import { authUtils } from "../../../lib/auth";
 
-} from "react-icons/fi";
-import { motion } from "framer-motion";
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  duration: string;
+  isActive: boolean;
+}
 
 interface Booking {
   id: string;
-  service: string;
-  customer: string;
-  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled";
+  status: string;
   date: string;
-  time: string;
-  address: string;
-  price: number;
-  duration: string;
-  customerPhone: string;
-  specialInstructions?: string;
+  notes: string | null;
+  totalAmount: number;
+  distance?: number;
+  clientAddress?: string;
+  clientLatitude?: number;
+  clientLongitude?: number;
+  service: Service;
+  client: {
+    id: string;
+    name: string;
+    user?: {
+      email: string;
+      phone: string;
+    };
+  };
 }
 
-interface Earnings {
-  week: number;
-  month: number;
-  total: number;
-  pending: number;
-}
-
-interface Review {
-  rating: number;
-  count: number;
+interface ProviderProfile {
+  id: string;
+  name: string;
+  skills: string[];
+  rate: number;
+  verified: boolean;
 }
 
 export default function ProviderDashboard() {
+  const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [earnings, setEarnings] = useState<Earnings>({
-    week: 0,
-    month: 0,
-    total: 0,
-    pending: 0
-  });
-  const [reviews, setReviews] = useState<Review>({
-    rating: 0,
-    count: 0
-  });
-  const [activeTab, setActiveTab] = useState<"overview" | "bookings" | "schedule">("overview");
-  const [isLoading, setIsLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [profile, setProfile] = useState<ProviderProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "bookings" | "services"
+  >("overview");
 
   useEffect(() => {
-    // Simulate API calls with mock data
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Mock bookings data
-        const mockBookings: Booking[] = [
-          {
-            id: "1",
-            service: "Electrical Wiring Installation",
-            customer: "Sarah Johnson",
-            status: "in-progress",
-            date: "2023-10-20",
-            time: "10:00 AM",
-            address: "123 Main St, Apt 4B",
-            price: 250,
-            duration: "3 hours",
-            customerPhone: "+1 (555) 123-4567",
-            specialInstructions: "Parking available in the back"
-          },
-          {
-            id: "2",
-            service: "Kitchen Sink Repair",
-            customer: "Michael Chen",
-            status: "confirmed",
-            date: "2023-10-21",
-            time: "2:30 PM",
-            address: "456 Oak Avenue",
-            price: 120,
-            duration: "2 hours",
-            customerPhone: "+1 (555) 987-6543"
-          },
-          {
-            id: "3",
-            service: "TV Mounting",
-            customer: "Emma Williams",
-            status: "pending",
-            date: "2023-10-22",
-            time: "11:00 AM",
-            address: "789 Pine Road",
-            price: 85,
-            duration: "1.5 hours",
-            customerPhone: "+1 (555) 456-7890"
-          },
-          {
-            id: "4",
-            service: "Bathroom Plumbing",
-            customer: "David Rodriguez",
-            status: "completed",
-            date: "2023-10-18",
-            time: "9:00 AM",
-            address: "321 Cedar Lane",
-            price: 180,
-            duration: "2.5 hours",
-            customerPhone: "+1 (555) 234-5678"
-          },
-          {
-            id: "5",
-            service: "Light Fixture Installation",
-            customer: "Lisa Thompson",
-            status: "cancelled",
-            date: "2023-10-19",
-            time: "3:00 PM",
-            address: "654 Elm Street",
-            price: 95,
-            duration: "1 hour",
-            customerPhone: "+1 (555) 345-6789"
-          }
-        ];
+    // Check authentication
+    if (!authUtils.isAuthenticated()) {
+      router.push("/login");
+      return;
+    }
 
-        // Mock earnings data
-        const mockEarnings: Earnings = {
-          week: 1250,
-          month: 3850,
-          total: 18700,
-          pending: 650
-        };
+    const user = authUtils.getUser();
+    if (user?.role !== "PROVIDER") {
+      router.push("/login");
+      return;
+    }
 
-        // Mock reviews data
-        const mockReviews: Review = {
-          rating: 4.8,
-          count: 47
-        };
+    // Fetch data
+    fetchDashboardData();
+  }, [router]);
 
-        setBookings(mockBookings);
-        setEarnings(mockEarnings);
-        setReviews(mockReviews);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      // Fetch provider profile
+      const profileRes = await profileAPI.getProviderProfile();
+      setProfile(profileRes.data);
 
-    fetchData();
-  }, []);
+      // Fetch bookings
+      const bookingsRes = await bookingsAPI.getProviderBookings();
+      setBookings(bookingsRes.data);
 
-  const updateBookingStatus = (id: string, status: Booking["status"]) => {
-    setBookings(bookings.map(booking => 
-      booking.id === id ? { ...booking, status } : booking
-    ));
-  };
-
-  const statusColor = (status: string) => {
-    switch(status) {
-      case "completed": return "bg-green-100 text-green-700";
-      case "confirmed": return "bg-blue-100 text-blue-700";
-      case "in-progress": return "bg-yellow-100 text-yellow-700";
-      case "pending": return "bg-gray-100 text-gray-700";
-      case "cancelled": return "bg-red-100 text-red-700";
-      default: return "bg-gray-100 text-gray-700";
+      // Fetch services
+      const servicesRes = await servicesAPI.getMyServices();
+      setServices(servicesRes.data);
+    } catch (err: any) {
+      console.error("Error fetching dashboard data:", err);
+      setError(err.response?.data?.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const statusIcon = (status: string) => {
-    switch(status) {
-      case "completed": return <FiCheckCircle className="text-green-600" />;
-      case "confirmed": return <FiCheckCircle className="text-blue-600" />;
-      case "in-progress": return <FiPlayCircle className="text-yellow-600" />;
-      case "pending": return <FiClock className="text-gray-600" />;
-      case "cancelled": return <FiXCircle className="text-red-600" />;
-      default: return <FiInfo className="text-gray-600" />;
+  const handleStatusUpdate = async (bookingId: string, newStatus: string) => {
+    try {
+      await bookingsAPI.updateBookingStatus(bookingId, newStatus);
+      // Refresh bookings after update
+      const bookingsRes = await bookingsAPI.getProviderBookings();
+      setBookings(bookingsRes.data);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to update booking status");
     }
   };
 
-  const statusActions = (status: string) => {
-    switch(status) {
-      case "pending": return ["confirm", "reject"];
-      case "confirmed": return ["start", "reschedule"];
-      case "in-progress": return ["complete", "issue"];
-      default: return [];
+  const getStatusColor = (status: string) => {
+    switch (status.toUpperCase()) {
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800";
+      case "CONFIRMED":
+        return "bg-blue-100 text-blue-800";
+      case "IN_PROGRESS":
+      case "IN-PROGRESS":
+        return "bg-purple-100 text-purple-800";
+      case "COMPLETED":
+        return "bg-green-100 text-green-800";
+      case "CANCELLED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <svg
-            key={star}
-            className={`h-4 w-4 ${star <= Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}`}
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-        ))}
-        <span className="ml-1 text-sm text-gray-600">{rating.toFixed(1)}</span>
-      </div>
-    );
+  const handleLogout = () => {
+    authUtils.logout();
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="p-6 bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[1, 2, 3, 4].map(item => (
-              <div key={item} className="bg-gray-200 rounded-xl p-6 h-32"></div>
-            ))}
-          </div>
-          <div className="bg-gray-200 rounded-xl p-6 h-64"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <ProviderHeader />
+  const stats = {
+    totalBookings: bookings.length,
+    pendingBookings: bookings.filter((b) => b.status === "PENDING").length,
+    completedBookings: bookings.filter((b) => b.status === "COMPLETED").length,
+    totalEarnings: bookings
+      .filter((b) => b.status === "COMPLETED")
+      .reduce((sum, b) => sum + b.totalAmount, 0),
+    activeServices: services.filter((s) => s.isActive).length,
+  };
 
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Provider Dashboard
+              </h1>
+              <p className="text-sm text-gray-600">
+                Welcome back, {profile?.name || "Provider"}!
+                {profile?.verified ? (
+                  <span className="ml-2 text-green-600">✓ Verified</span>
+                ) : (
+                  <span className="ml-2 text-yellow-600">⚠ Not Verified</span>
+                )}
+              </p>
+            </div>
             <button
-              onClick={() => setActiveTab("overview")}
-              className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "overview"
-                  ? "border-green-500 text-green-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
-              Overview
+              Logout
             </button>
-            <button
-              onClick={() => setActiveTab("bookings")}
-              className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "bookings"
-                  ? "border-green-500 text-green-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Bookings
-            </button>
-            <button
-              onClick={() => setActiveTab("schedule")}
-              className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "schedule"
-                  ? "border-green-500 text-green-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Schedule
-            </button>
-          </nav>
+          </div>
+        </div>
+      </header>
+
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Booking Requests Alert */}
+      {stats.pendingBookings > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-yellow-400 animate-pulse"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-yellow-800">
+                  You have {stats.pendingBookings} pending booking{" "}
+                  {stats.pendingBookings === 1 ? "request" : "requests"} waiting
+                  for your response!
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab("bookings")}
+                className="ml-auto px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition-colors"
+              >
+                View Requests
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Bookings</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.totalBookings}
+                </p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Pending</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.pendingBookings}
+                </p>
+              </div>
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-yellow-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Completed</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.completedBookings}
+                </p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Earnings</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  ${stats.totalEarnings.toFixed(2)}
+                </p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Active Services</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.activeServices}
+                </p>
+              </div>
+              <div className="p-3 bg-indigo-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-indigo-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Overview Tab */}
-        {activeTab === "overview" && (
-          <div className="space-y-6">
-            {/* Stats Cards */}
-{/* Stats Cards */}
-<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white border rounded-lg shadow-sm p-3 flex flex-col items-center text-center"
-  >
-    <div className="p-2 rounded-full bg-blue-100 text-blue-600 mb-2">
-      <FiCalendar className="h-5 w-5" />
-    </div>
-    <p className="text-xs text-gray-500">Total</p>
-    <h2 className="text-lg font-bold text-gray-900">{bookings.length}</h2>
-  </motion.div>
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab("overview")}
+                className={`px-6 py-3 text-sm font-medium ${
+                  activeTab === "overview"
+                    ? "border-b-2 border-blue-500 text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab("bookings")}
+                className={`px-6 py-3 text-sm font-medium ${
+                  activeTab === "bookings"
+                    ? "border-b-2 border-blue-500 text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Bookings
+              </button>
+              <button
+                onClick={() => setActiveTab("services")}
+                className={`px-6 py-3 text-sm font-medium ${
+                  activeTab === "services"
+                    ? "border-b-2 border-blue-500 text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                My Services
+              </button>
+            </nav>
+          </div>
 
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.1 }}
-    className="bg-white border rounded-lg shadow-sm p-3 flex flex-col items-center text-center"
-  >
-    <div className="p-2 rounded-full bg-green-100 text-green-600 mb-2">
-      <FiDollarSign className="h-5 w-5" />
-    </div>
-    <p className="text-xs text-gray-500">Earnings</p>
-    <h2 className="text-lg font-bold text-gray-900">{formatCurrency(earnings.month)}</h2>
-  </motion.div>
-
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 }}
-    className="bg-white border rounded-lg shadow-sm p-3 flex flex-col items-center text-center"
-  >
-    <div className="p-2 rounded-full bg-yellow-100 text-yellow-600 mb-2">
-      <FiStar className="h-5 w-5" />
-    </div>
-    <p className="text-xs text-gray-500">Rating</p>
-    <div className="flex items-center justify-center">
-      {renderStars(reviews.rating)}
-      <span className="ml-1 text-[10px] text-gray-500">({reviews.count})</span>
-    </div>
-  </motion.div>
-
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.3 }}
-    className="bg-white border rounded-lg shadow-sm p-3 flex flex-col items-center text-center"
-  >
-    <div className="p-2 rounded-full bg-purple-100 text-purple-600 mb-2">
-      <FiClock className="h-5 w-5" />
-    </div>
-    <p className="text-xs text-gray-500">Pending</p>
-    <h2 className="text-lg font-bold text-gray-900">
-      {bookings.filter(b => b.status === "pending").length}
-    </h2>
-  </motion.div>
-</div>
-
-
-
-
-
-
-
-            {/* Upcoming Bookings */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100"
-            >
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Upcoming Bookings</h2>
-                <p className="mt-1 text-sm text-gray-500">Your scheduled appointments for the next few days</p>
-              </div>
-              <div className="p-6">
-                {bookings.filter(b => b.status === "confirmed" || b.status === "in-progress").length === 0 ? (
-                  <p className="text-center text-gray-500 py-4">No upcoming bookings</p>
+          <div className="p-6">
+            {activeTab === "overview" && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Recent Bookings</h3>
+                {bookings.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No bookings yet</p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
-                    {bookings
-                      .filter(b => b.status === "confirmed" || b.status === "in-progress")
-                      .slice(0, 3)
-                      .map(booking => (
-                        <div key={booking.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                          <div>
-                            <h3 className="font-medium text-gray-900 text-sm">{booking.service}</h3>
-                            <p className="text-xs text-gray-500">{booking.customer} • {formatDate(booking.date)} at {booking.time}</p>
+                    {bookings.slice(0, 5).map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900">
+                              {booking.service.title}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Client: {booking.client.name}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {formatDate(booking.date)}
+                            </p>
+                            {booking.notes && (
+                              <p className="text-sm text-gray-600 mt-2 italic">
+                                {booking.notes}
+                              </p>
+                            )}
                           </div>
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusColor(booking.status)}`}>
-                            {booking.status.replace("-", " ")}
-                          </span>
-                        </div>
-                      ))
-                    }
-                  </div>
-                )}
-                <div className="mt-4 text-center">
-                  <button 
-                    onClick={() => setActiveTab("bookings")}
-                    className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center justify-center mx-auto"
-                  >
-                    View all bookings <FiArrowRight className="ml-1" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Earnings Summary */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100"
-            >
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Earnings Summary</h2>
-                <p className="mt-1 text-sm text-gray-500">Your earnings overview</p>
-              </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center p-4 bg-gradient-to-b from-green-50 to-blue-50 rounded-xl">
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(earnings.week)}</p>
-                  <p className="text-sm text-gray-500">This Week</p>
-                </div>
-                <div className="text-center p-4 bg-gradient-to-b from-blue-50 to-purple-50 rounded-xl">
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(earnings.month)}</p>
-                  <p className="text-sm text-gray-500">This Month</p>
-                </div>
-                <div className="text-center p-4 bg-gradient-to-b from-purple-50 to-pink-50 rounded-xl">
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(earnings.total)}</p>
-                  <p className="text-sm text-gray-500">Total Earnings</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* Bookings Tab */}
-{activeTab === "bookings" && (
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-xl shadow-sm border border-gray-100"
-  >
-    <div className="p-6 border-b border-gray-200">
-      <h2 className="text-lg font-medium text-gray-900">All Bookings</h2>
-      <p className="mt-1 text-sm text-gray-500">Tap a booking to view details & actions</p>
-    </div>
-
-    <div className="divide-y divide-gray-200">
-      {bookings.length === 0 ? (
-        <p className="text-center text-gray-500 py-6">No bookings found</p>
-      ) : (
-        bookings.map((booking) => (
-          <div key={booking.id} className="p-4">
-            {/* Accordion Header */}
-            <button
-              onClick={() =>
-                setExpandedId(expandedId === booking.id ? null : booking.id)
-              }
-              className="w-full flex justify-between items-center text-left"
-            >
-              <div>
-                <h3 className="text-sm font-medium text-gray-900">{booking.service}</h3>
-                <p className="text-xs text-gray-500">{booking.customer}</p>
-              </div>
-              <div className="flex items-center">
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusColor(
-                    booking.status
-                  )}`}
-                >
-                  {statusIcon(booking.status)}
-                  <span className="ml-1">{booking.status}</span>
-                </span>
-                <motion.span
-                  initial={false}
-                  animate={{ rotate: expandedId === booking.id ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="ml-3 text-gray-400"
-                >
-                  ▼
-                </motion.span>
-              </div>
-            </button>
-
-            {/* Accordion Body */}
-            {expandedId === booking.id && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-3 space-y-2 text-sm text-gray-600"
-              >
-                <p>Date: {formatDate(booking.date)}</p>
-                <p>Time: {booking.time}</p>
-                <p>Price: {formatCurrency(booking.price)}</p>
-
-                {/* Actions */}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {statusActions(booking.status).map((action) => (
-                    <button
-                      key={action}
-                      onClick={() => {
-                        if (action === "confirm") updateBookingStatus(booking.id, "confirmed");
-                        if (action === "start") updateBookingStatus(booking.id, "in-progress");
-                        if (action === "complete") updateBookingStatus(booking.id, "completed");
-                        if (action === "reject") updateBookingStatus(booking.id, "cancelled");
-                      }}
-                      className={`text-xs px-3 py-1.5 rounded-md ${
-                        action === "confirm" || action === "start" || action === "complete"
-                          ? "bg-green-100 text-green-700 hover:bg-green-200"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {action}
-                    </button>
-                  ))}
-                  <button className="text-green-600 hover:text-green-800 text-xs px-3 py-1.5 bg-green-50 rounded-md">
-                    Details
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </div>
-        ))
-      )}
-    </div>
-  </motion.div>
-)}
-
-
-{activeTab === "schedule" && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-xl shadow-lg border border-gray-100 p-6"
-  >
-    {/* Header */}
-    <div className="mb-6">
-      <h2 className="text-xl font-semibold text-gray-900">Weekly Timeline</h2>
-      <p className="text-sm text-gray-500">Your appointments for the week</p>
-    </div>
-
-    {/* Vertical timeline */}
-    <div className="space-y-8 relative">
-      {Array.from({ length: 7 }).map((_, dayIndex) => {
-        const date = new Date(2023, 9, 16 + dayIndex);
-        const dayBookings = bookings.filter(
-          b => new Date(b.date).getDate() === date.getDate()
-        );
-
-        return (
-          <div key={dayIndex} className="flex items-start gap-6">
-            {/* Date label */}
-            <div className="w-24 text-right text-sm font-medium text-gray-500 flex flex-col items-end">
-              <span>{date.toLocaleDateString("en-US", { weekday: "short" })}</span>
-              <span className="text-xs mt-1">{date.getDate()}</span>
-            </div>
-
-            {/* Timeline line */}
-            <div className="relative flex-1">
-              {/* Vertical connecting line */}
-              <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-
-              {/* Bookings */}
-              <div className="space-y-6 pl-10">
-                {dayBookings.length > 0 ? (
-                  dayBookings.map((booking, idx) => (
-                    <div key={booking.id} className="relative flex items-start gap-4 group">
-                      {/* Timeline dot */}
-                      <span className="absolute -left-10 top-3 w-4 h-4 rounded-full border-2 border-blue-500 bg-white"></span>
-
-                      {/* Booking card */}
-                      <div className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 w-full">
-                        <div className="flex justify-between items-center mb-1">
-                          <div className="text-xs font-semibold text-blue-800 flex items-center gap-1">
-                            <FiClock className="h-3 w-3" /> {booking.time}
+                          <div className="text-right">
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                booking.status
+                              )}`}
+                            >
+                              {booking.status.replace("_", " ")}
+                            </span>
+                            <p className="text-lg font-bold text-gray-900 mt-2">
+                              ${booking.totalAmount}
+                            </p>
                           </div>
-                          <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(booking.status)}`}>
-                            {booking.status.replace("-", " ")}
-                          </div>
-                        </div>
-
-                        <div className="text-sm text-blue-900 font-medium">{booking.service}</div>
-                        <div className="text-xs text-gray-500 mt-1">{booking.customer}</div>
-
-                        <div className="text-xs text-gray-600 mt-2 space-y-1">
-                          <div><strong>Location:</strong> {booking.location || "N/A"}</div>
-                          <div><strong>Price:</strong> {formatCurrency(booking.price)}</div>
-                          <div><strong>Tracking:</strong> {booking.trackingStatus || "Pending"}</div>
-                        </div>
-
-                        {/* Status progress indicator */}
-                        <div className="mt-3 h-1 w-full rounded-full bg-gray-200 overflow-hidden">
-                          <div
-                            className={`h-full ${booking.status === "completed" ? "bg-green-500" : booking.status === "in-progress" ? "bg-yellow-400" : "bg-blue-400"}`}
-                            style={{ width: "100%" }}
-                          ></div>
                         </div>
                       </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-gray-400 italic pl-6">No bookings</div>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
+            )}
+
+            {activeTab === "bookings" && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4">All Bookings</h3>
+                {bookings.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No bookings found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900">
+                              {booking.service.title}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Client: {booking.client.name}
+                            </p>
+                            {booking.client.user?.email && (
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                📧 {booking.client.user.email}
+                              </p>
+                            )}
+                            {booking.client.user?.phone && (
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                📱 {booking.client.user.phone}
+                              </p>
+                            )}
+                            <p className="text-sm text-gray-500 mt-1">
+                              Date: {formatDate(booking.date)}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Duration: {booking.service.duration}
+                            </p>
+                            {booking.notes && (
+                              <p className="text-sm text-gray-600 mt-2 italic">
+                                Notes: {booking.notes}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                booking.status
+                              )}`}
+                            >
+                              {booking.status.replace("_", " ")}
+                            </span>
+                            <p className="text-lg font-bold text-gray-900 mt-2">
+                              ${booking.totalAmount}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Client Location Details */}
+                        {booking.clientAddress && (
+                          <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                            <div className="flex items-start gap-2">
+                              <span className="text-blue-600 text-lg">📍</span>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Service Location
+                                </p>
+                                <p className="text-sm text-gray-700 mt-1">
+                                  {booking.clientAddress}
+                                </p>
+                                {booking.distance && (
+                                  <p className="text-sm text-blue-600 font-medium mt-1">
+                                    🚗 {booking.distance} km away
+                                  </p>
+                                )}
+                                {booking.clientLatitude &&
+                                  booking.clientLongitude && (
+                                    <a
+                                      href={`https://www.google.com/maps?q=${booking.clientLatitude},${booking.clientLongitude}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-block mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                      View on Google Maps →
+                                    </a>
+                                  )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Status update buttons */}
+                        {booking.status === "PENDING" && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() =>
+                                handleStatusUpdate(booking.id, "CONFIRMED")
+                              }
+                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStatusUpdate(booking.id, "CANCELLED")
+                              }
+                              className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+
+                        {booking.status === "CONFIRMED" && (
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(booking.id, "IN_PROGRESS")
+                            }
+                            className="px-4 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
+                          >
+                            Start Work
+                          </button>
+                        )}
+
+                        {booking.status === "IN_PROGRESS" && (
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(booking.id, "COMPLETED")
+                            }
+                            className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                          >
+                            Mark as Completed
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "services" && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">My Services</h3>
+                  <Link
+                    href="/dashboard/provider/services/new"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add New Service
+                  </Link>
+                </div>
+                {services.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No services yet</p>
+                    <Link
+                      href="/dashboard/provider/services/new"
+                      className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Create Your First Service
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {services.map((service) => (
+                      <div
+                        key={service.id}
+                        className="border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-gray-900">
+                            {service.title}
+                          </h4>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              service.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {service.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {service.description}
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm text-gray-500">
+                              Category: {service.category}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Duration: {service.duration}
+                            </p>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">
+                            ${service.price}
+                          </p>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <Link
+                            href={`/dashboard/provider/services/${service.id}/edit`}
+                            className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm text-center rounded hover:bg-blue-700"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await servicesAPI.toggleServiceStatus(
+                                  service.id
+                                );
+                                fetchDashboardData();
+                              } catch (err) {
+                                alert("Failed to toggle service status");
+                              }
+                            }}
+                            className="flex-1 px-3 py-2 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+                          >
+                            {service.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        );
-      })}
-    </div>
-  </motion.div>
-)}
+        </div>
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link
+            href="/dashboard/provider/services"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="font-semibold text-gray-900">Manage Services</h3>
+                <p className="text-sm text-gray-600">
+                  Add or edit your services
+                </p>
+              </div>
+            </div>
+          </Link>
 
+          <Link
+            href="/dashboard/provider/profile"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="font-semibold text-gray-900">My Profile</h3>
+                <p className="text-sm text-gray-600">Edit your information</p>
+              </div>
+            </div>
+          </Link>
 
-
-
+          <Link
+            href="/dashboard/provider/payouts"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="font-semibold text-gray-900">Payouts</h3>
+                <p className="text-sm text-gray-600">View earnings & payouts</p>
+              </div>
+            </div>
+          </Link>
+        </div>
       </div>
     </div>
   );
