@@ -83,7 +83,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8"
         >
           <button className="group bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white px-8 py-4 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-blue-500/25 flex items-center gap-2">
             Get Started
@@ -93,6 +93,68 @@ export default function HeroSection() {
             <FiSearch className="group-hover:rotate-12 transition-transform" />
             Browse Services
           </button>
+        </motion.div>
+
+        {/* Development Testing Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/20"
+        >
+          <div className="text-yellow-300 text-sm font-semibold mb-4 flex items-center gap-2">
+            🚧 Development Testing - Quick Access
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <a
+              href="/login"
+              className="bg-white/20 hover:bg-white/30 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 text-center text-sm"
+            >
+              🔐 Login
+            </a>
+            <a
+              href="/client-signup"
+              className="bg-blue-500/80 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 text-center text-sm"
+            >
+              👤 Client Signup
+            </a>
+            <a
+              href="/provider-signup"
+              className="bg-purple-500/80 hover:bg-purple-500 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 text-center text-sm"
+            >
+              🛠️ Provider Signup
+            </a>
+            <a
+              href="/dashboard/admin"
+              className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 text-center text-sm"
+            >
+              👑 Admin Dashboard
+            </a>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+            <a
+              href="/dashboard/client"
+              className="bg-teal-500/80 hover:bg-teal-500 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 text-center text-sm"
+            >
+              📱 Client Dashboard
+            </a>
+            <a
+              href="/dashboard/provider"
+              className="bg-indigo-500/80 hover:bg-indigo-500 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 text-center text-sm"
+            >
+              🔧 Provider Dashboard
+            </a>
+            <a
+              href="/services"
+              className="bg-green-500/80 hover:bg-green-500 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 text-center text-sm"
+            >
+              🏪 Browse Services
+            </a>
+          </div>
+          <div className="text-xs text-white/60 mt-3 text-center">
+            Test Credentials: admin@bluecollar.com | client@test.com |
+            provider1@test.com | Password: password123
+          </div>
         </motion.div>
 
         {/* Search Bar */}
