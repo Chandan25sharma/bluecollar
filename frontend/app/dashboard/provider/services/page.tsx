@@ -1,6 +1,5 @@
 "use client";
 
-import ProviderHeader from "components/ProviderHeader";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
@@ -15,6 +14,7 @@ import {
   FiTrash2,
   FiX,
 } from "react-icons/fi";
+import ProviderHeader from "../../../../components/ProviderHeader";
 
 interface Service {
   id: string;
@@ -590,7 +590,7 @@ export default function ProviderServicesPage() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
                 {filteredServices.map((service) => (
                   <motion.div
                     key={service.id}

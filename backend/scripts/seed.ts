@@ -84,14 +84,20 @@ async function seed() {
         skills: ['Plumbing', 'Pipe Repair', 'Drain Cleaning'],
         rate: 50.0,
         verified: true,
+        verificationStatus: 'APPROVED',
         bankName: 'Test Bank',
         bankAcc: '123456789',
+        govIdUrl: 'https://example.com/docs/mike_gov_id.pdf',
+        businessLicenseUrl: 'https://example.com/docs/mike_license.pdf',
+        insuranceDocUrl: 'https://example.com/docs/mike_insurance.pdf',
+        certificationUrls: ['https://example.com/docs/mike_cert1.pdf'],
         address: '456 Broadway, New York, NY 10013',
         latitude: 40.7205,
         longitude: -74.0009,
         city: 'New York',
         state: 'NY',
         zipCode: '10013',
+        verifiedAt: new Date(),
       },
     });
 
@@ -112,14 +118,55 @@ async function seed() {
         skills: ['Electrical Work', 'Wiring', 'Light Installation'],
         rate: 60.0,
         verified: true,
+        verificationStatus: 'APPROVED',
         bankName: 'Test Bank',
         bankAcc: '987654321',
+        govIdUrl: 'https://example.com/docs/sarah_gov_id.pdf',
+        businessLicenseUrl: 'https://example.com/docs/sarah_license.pdf',
+        insuranceDocUrl: 'https://example.com/docs/sarah_insurance.pdf',
+        certificationUrls: ['https://example.com/docs/sarah_cert1.pdf', 'https://example.com/docs/sarah_cert2.pdf'],
         address: '789 5th Avenue, New York, NY 10022',
         latitude: 40.7614,
         longitude: -73.9776,
         city: 'New York',
         state: 'NY',
         zipCode: '10022',
+        verifiedAt: new Date(),
+      },
+    });
+
+    // Create Provider 3 (PENDING verification)
+    const provider3User = await prisma.user.create({
+      data: {
+        email: 'provider3@test.com',
+        password: hashedPassword,
+        phone: '+1234567893',
+        role: Role.PROVIDER,
+        verified: false,
+      },
+    });
+
+    const provider3Profile = await prisma.providerProfile.create({
+      data: {
+        userId: provider3User.id,
+        name: 'Tom Carpenter',
+        skills: ['Carpentry', 'Furniture Repair', 'Custom Woodwork'],
+        rate: 55.0,
+        verified: false,
+        verificationStatus: 'PENDING',
+        bankName: 'Test Bank',
+        bankAcc: '555666777',
+        govIdUrl: 'https://example.com/docs/tom_gov_id.pdf',
+        businessLicenseUrl: 'https://example.com/docs/tom_license.pdf',
+        insuranceDocUrl: null,
+        certificationUrls: [],
+        address: '321 Carpenter Lane, Brooklyn, NY 11201',
+        latitude: 40.6892,
+        longitude: -73.9942,
+        city: 'Brooklyn',
+        state: 'NY',
+        zipCode: '11201',
+        verifiedAt: null,
       },
     });
 
@@ -160,18 +207,33 @@ async function seed() {
       },
     });
 
+    const carpentryService = await prisma.service.create({
+      data: {
+        title: 'Custom Furniture Repair',
+        description: 'Professional furniture repair and restoration',
+        category: 'Carpentry',
+        price: 55.0,
+        duration: '2-3 hours',
+        providerId: provider3Profile.id,
+        isActive: false, // Not active because provider is pending verification
+      },
+    });
+
     console.log('✅ Seed completed successfully!');
     console.log('Created:');
     console.log(`- Admin: ${adminUser.email} (Role: ${adminProfile.role})`);
     console.log(`- Client: ${clientUser.email} (Profile: ${clientProfile.name})`);
-    console.log(`- Provider 1: ${provider1User.email} (Profile: ${provider1Profile.name})`);
-    console.log(`- Provider 2: ${provider2User.email} (Profile: ${provider2Profile.name})`);
-    console.log(`- Services: ${plumbingService.title}, ${electricalService.title}, ${cleaningService.title}`);
+    console.log(`- Provider 1: ${provider1User.email} (Profile: ${provider1Profile.name}) - APPROVED`);
+    console.log(`- Provider 2: ${provider2User.email} (Profile: ${provider2Profile.name}) - APPROVED`);
+    console.log(`- Provider 3: ${provider3User.email} (Profile: ${provider3Profile.name}) - PENDING`);
+    console.log(`- Services: ${plumbingService.title}, ${electricalService.title}, ${cleaningService.title}, ${carpentryService.title}`);
     console.log('\n🔑 Test credentials:');
-    console.log('Admin  : admin@bluecollar.com / password123');
-    console.log('Client : client@test.com / password123');
-    console.log('Provider1: provider1@test.com / password123');
-    console.log('Provider2: provider2@test.com / password123');
+    console.log('Admin    : admin@bluecollar.com / password123');
+    console.log('Client   : client@test.com / password123');
+    console.log('Provider1: provider1@test.com / password123 (APPROVED)');
+    console.log('Provider2: provider2@test.com / password123 (APPROVED)');
+    console.log('Provider3: provider3@test.com / password123 (PENDING)');
+
 
   } catch (error) {
     console.error('❌ Seed failed:', error);

@@ -3,17 +3,16 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
-  FiBookOpen,
-  FiDollarSign,
+  FiCalendar,
   FiGrid,
   FiHome,
+  FiSearch,
   FiSettings,
-  FiTool,
   FiUser,
 } from "react-icons/fi";
 import NotificationBell from "./NotificationBell";
 
-export default function ProviderHeader() {
+export default function ClientHeader() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -36,43 +35,37 @@ export default function ProviderHeader() {
         <motion.h1
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xl font-bold text-green-600 flex items-center"
+          className="text-xl font-bold text-blue-600 flex items-center"
         >
-          <span className="bg-gradient-to-r from-green-600 to-teal-500 text-white p-1 rounded mr-2">
+          <span className="bg-gradient-to-r from-blue-600 to-teal-500 text-white p-1 rounded mr-2">
             <FiGrid size={14} />
           </span>
-          Provider Dashboard
+          Client Dashboard
         </motion.h1>
 
         {/* Desktop Links */}
         <div className="hidden md:flex ml-8 space-x-6">
           <a
-            href="/dashboard/provider"
-            className="text-gray-700 hover:text-green-600 font-medium text-sm"
+            href="/dashboard/client"
+            className="text-gray-700 hover:text-blue-600 font-medium text-sm"
           >
             Home
           </a>
           <a
-            href="/dashboard/provider/bookings"
-            className="text-gray-700 hover:text-green-600 font-medium text-sm"
+            href="/dashboard/client/Services"
+            className="text-gray-700 hover:text-blue-600 font-medium text-sm"
           >
-            Bookings
+            Browse Services
           </a>
           <a
-            href="/dashboard/provider/services"
-            className="text-gray-700 hover:text-green-600 font-medium text-sm"
+            href="/dashboard/client/bookings"
+            className="text-gray-700 hover:text-blue-600 font-medium text-sm"
           >
-            Services
+            My Bookings
           </a>
           <a
-            href="/dashboard/provider/payouts"
-            className="text-gray-700 hover:text-green-600 font-medium text-sm"
-          >
-            Payouts
-          </a>
-          <a
-            href="/dashboard/provider/profile"
-            className="text-gray-700 hover:text-green-600 font-medium text-sm"
+            href="/dashboard/client/profile"
+            className="text-gray-700 hover:text-blue-600 font-medium text-sm"
           >
             Profile
           </a>
@@ -84,8 +77,8 @@ export default function ProviderHeader() {
           <NotificationBell />
 
           <a
-            href="/dashboard/provider/settings"
-            className="text-gray-500 hover:text-green-600"
+            href="/dashboard/client/settings"
+            className="text-gray-500 hover:text-blue-600"
             title="Settings"
           >
             <FiSettings size={18} />
@@ -107,39 +100,31 @@ export default function ProviderHeader() {
         className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 flex justify-around items-center h-16 md:hidden"
       >
         <a
-          href="/dashboard/provider"
-          className="flex flex-col items-center text-gray-600 hover:text-green-600"
+          href="/dashboard/client"
+          className="flex flex-col items-center text-gray-600 hover:text-blue-600"
         >
           <FiHome size={20} />
           <span className="text-xs">Home</span>
         </a>
         <a
-          href="/dashboard/provider/bookings"
-          className="flex flex-col items-center text-gray-600 hover:text-green-600"
+          href="/services"
+          className="flex flex-col items-center text-gray-600 hover:text-blue-600"
         >
-          <FiBookOpen size={20} />
-          <span className="text-xs">Bookings</span>
-        </a>
-
-        <a
-          href="/dashboard/provider/services"
-          className="flex flex-col items-center text-gray-600 hover:text-green-600"
-        >
-          <FiTool size={20} />
+          <FiSearch size={20} />
           <span className="text-xs">Services</span>
         </a>
 
         <a
-          href="/dashboard/provider/payouts"
-          className="flex flex-col items-center text-gray-600 hover:text-green-600"
+          href="/dashboard/client/bookings"
+          className="flex flex-col items-center text-gray-600 hover:text-blue-600"
         >
-          <FiDollarSign size={20} />
-          <span className="text-xs">Payouts</span>
+          <FiCalendar size={20} />
+          <span className="text-xs">Bookings</span>
         </a>
 
         <a
-          href="/dashboard/provider/profile"
-          className="flex flex-col items-center text-gray-600 hover:text-green-600"
+          href="/dashboard/client/profile"
+          className="flex flex-col items-center text-gray-600 hover:text-blue-600"
         >
           <FiUser size={20} />
           <span className="text-xs">Profile</span>

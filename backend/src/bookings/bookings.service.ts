@@ -1,18 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { BookingStatus } from '@prisma/client';
 import { calculateDistance } from '../common/utils/distance.util';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-
-export interface CreateBookingDto {
-  serviceId: string;
-  providerId?: string; // Optional: specific provider ID
-  date: string;
-  notes?: string;
-  // Client address for this booking
-  clientAddress?: string;
-  clientLatitude?: number;
-  clientLongitude?: number;
-}
+import { CreateBookingDto } from './dto/create-booking.dto';
 
 export interface UpdateBookingDto {
   status?: BookingStatus;
@@ -22,7 +13,11 @@ export interface UpdateBookingDto {
 
 @Injectable()
 export class BookingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async createBooking(clientUserId: string, bookingData: CreateBookingDto) {
     // Find client profile
@@ -64,7 +59,7 @@ export class BookingsService {
       }
     }
 
-    return this.prisma.booking.create({
+    const booking = await this.prisma.booking.create({
       data: {
         clientId: clientProfile.id,
         providerId,
@@ -102,6 +97,11 @@ export class BookingsService {
         service: true,
       }
     });
+
+    // Notify provider of new booking
+    await this.notificationsService.notifyNewBooking(booking.id);
+
+    return booking;
   }
 
   async getBookingsByClient(clientUserId: string) {
@@ -182,10 +182,21 @@ export class BookingsService {
       throw new Error('Unauthorized to update this booking');
     }
 
+    // Prepare update data with timestamps
+    const updateData: any = { status };
+    
+    if (status === BookingStatus.ACCEPTED) {
+      updateData.acceptedAt = new Date();
+    } else if (status === BookingStatus.COMPLETED) {
+      updateData.completedAt = new Date();
+    } else if (status === BookingStatus.CANCELLED) {
+      updateData.cancelledAt = new Date();
+    }
+
     // Update booking status
     const updatedBooking = await this.prisma.booking.update({
       where: { id: bookingId },
-      data: { status },
+      data: updateData,
       include: {
         client: {
           include: {
@@ -211,8 +222,13 @@ export class BookingsService {
       }
     });
 
-    // If booking is completed, create a payment record (hardcoded for now)
-    if (status === BookingStatus.COMPLETED) {
+    // Send notifications based on status change
+    if (status === BookingStatus.ACCEPTED) {
+      await this.notificationsService.notifyBookingAccepted(bookingId);
+    } else if (status === BookingStatus.COMPLETED) {
+      await this.notificationsService.notifyBookingCompleted(bookingId);
+      
+      // Create payment record
       await this.prisma.payment.create({
         data: {
           bookingId: booking.id,

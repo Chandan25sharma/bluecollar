@@ -4,6 +4,7 @@ import { AddressesModule } from './addresses/addresses.module';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { ServicesModule } from './services/services.module';
@@ -20,6 +21,7 @@ import { ServicesModule } from './services/services.module';
     ProfilesModule,
     AddressesModule,
     AdminModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

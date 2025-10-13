@@ -117,6 +117,21 @@ export const bookingsAPI = {
     api.get('/provider/payouts'),
 };
 
+// Notifications API methods
+export const notificationsAPI = {
+  getNotifications: (unreadOnly = false) =>
+    api.get('/notifications', { params: { unread: unreadOnly } }),
+  
+  getUnreadCount: () =>
+    api.get('/notifications/unread-count'),
+  
+  markAsRead: (id: string) =>
+    api.put(`/notifications/${id}/read`),
+  
+  markAllAsRead: () =>
+    api.put('/notifications/mark-all-read'),
+};
+
 // Addresses API methods
 export const addressesAPI = {
   getAddresses: () =>

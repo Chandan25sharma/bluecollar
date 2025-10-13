@@ -1,21 +1,17 @@
 "use client";
 
-import ProviderHeader from "components/ProviderHeader";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import {
-  FiDollarSign,
-  FiClock,
-  FiCheckCircle,
   FiAlertCircle,
-  FiCalendar,
+  FiCheckCircle,
   FiChevronDown,
+  FiClock,
+  FiDollarSign,
   FiInfo,
   FiX,
-  FiCreditCard,
-  FiArrowUp,
-  FiArrowDown,
 } from "react-icons/fi";
-import { motion } from "framer-motion";
+import ProviderHeader from "../../../../components/ProviderHeader";
 
 interface Payout {
   id: string;
@@ -168,7 +164,7 @@ export default function ProviderPayoutsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-          <div className="max-w-8xl mx-auto px-0 sm:px-0 lg:px-0 py-0">
+      <div className="max-w-8xl mx-auto px-0 sm:px-0 lg:px-0 py-0">
         {/* Header */}
         <ProviderHeader />
 

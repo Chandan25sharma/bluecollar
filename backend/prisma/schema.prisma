@@ -152,6 +152,13 @@ model Booking {
   clientLatitude  Float?
   clientLongitude Float?
   
+  // Tracking and notifications
+  acceptedAt      DateTime?       // When provider accepted
+  completedAt     DateTime?       // When service completed
+  cancelledAt     DateTime?       // When booking cancelled
+  estimatedArrival DateTime?      // Provider's estimated arrival time
+  providerNotes   String?         // Provider's notes after accepting
+  
   client          ClientProfile   @relation(fields: [clientId], references: [id])
   clientId        String          @db.ObjectId
   provider        ProviderProfile @relation(fields: [providerId], references: [id])
@@ -163,6 +170,7 @@ model Booking {
 
   review     Review?
   payment    Payment?
+  notifications Notification[]
 }
 
 model Payment {
@@ -197,4 +205,26 @@ model Payout {
   provider   ProviderProfile @relation(fields: [providerId], references: [id])
   providerId String          @db.ObjectId
   createdAt  DateTime        @default(now())
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId  // User who receives the notification
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  bookingId String?  @db.ObjectId
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum NotificationType {
+  BOOKING_CREATED       // New booking request
+  BOOKING_ACCEPTED      // Provider accepted booking
+  BOOKING_COMPLETED     // Service completed
+  BOOKING_CANCELLED     // Booking cancelled
+  PROVIDER_ARRIVING     // Provider is on the way
+  PAYMENT_RECEIVED      // Payment processed
+  REVIEW_RECEIVED       // New review
 }

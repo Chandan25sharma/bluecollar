@@ -11,7 +11,8 @@ import {
     UseGuards
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { BookingsService, CreateBookingDto } from './bookings.service';
+import { BookingsService } from './bookings.service';
+import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 
 @Controller('bookings')
