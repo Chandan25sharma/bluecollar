@@ -117,6 +117,32 @@ export const bookingsAPI = {
     api.get('/provider/payouts'),
 };
 
+// Payment API methods
+export const paymentsAPI = {
+  createOrder: (bookingId: string, amount: number, providerId: string) =>
+    api.post('/payments/create-order', { bookingId, amount, providerId }),
+  
+  verifyPayment: (paymentData: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) =>
+    api.post('/payments/verify', paymentData),
+  
+  getPaymentByBooking: (bookingId: string) =>
+    api.get(`/payments/booking/${bookingId}`),
+  
+  // Admin functions
+  getAllPayments: (page?: number, limit?: number, status?: string) =>
+    api.get('/payments/admin/all', { params: { page, limit, status } }),
+  
+  refundPayment: (paymentId: string, reason?: string) =>
+    api.post(`/payments/admin/refund/${paymentId}`, { reason }),
+  
+  getPaymentStats: () =>
+    api.get('/payments/admin/stats'),
+};
+
 // Notifications API methods
 export const notificationsAPI = {
   getNotifications: (unreadOnly = false) =>

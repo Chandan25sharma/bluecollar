@@ -5,6 +5,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { ServicesModule } from './services/services.module';
@@ -22,6 +23,7 @@ import { ServicesModule } from './services/services.module';
     AddressesModule,
     AdminModule,
     NotificationsModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

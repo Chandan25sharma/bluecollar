@@ -132,4 +132,30 @@ export class ProfilesController {
       );
     }
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('provider/toggle-availability')
+  async toggleProviderAvailability(@Request() req) {
+    try {
+      return await this.profilesService.toggleProviderAvailability(req.user.id);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to toggle provider availability',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('provider/availability')
+  async getProviderAvailability(@Request() req) {
+    try {
+      return await this.profilesService.getProviderAvailability(req.user.id);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to get provider availability',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 }

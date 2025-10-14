@@ -7,7 +7,13 @@ import { bookingsAPI } from "../../../../lib/api";
 
 interface Booking {
   id: string;
-  status: "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status:
+    | "PENDING_PAYMENT"
+    | "PENDING"
+    | "ACCEPTED"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | "CANCELLED";
   date: string;
   clientAddress: string;
   clientLatitude?: number;
@@ -65,12 +71,14 @@ export default function ClientBookingsPage() {
     switch (status) {
       case "COMPLETED":
         return "bg-green-100 text-green-800";
-      case "CONFIRMED":
+      case "ACCEPTED":
         return "bg-blue-100 text-blue-800";
       case "IN_PROGRESS":
         return "bg-yellow-100 text-yellow-800";
       case "PENDING":
-        return "bg-gray-100 text-gray-800";
+        return "bg-indigo-100 text-indigo-800";
+      case "PENDING_PAYMENT":
+        return "bg-orange-100 text-orange-800";
       case "CANCELLED":
         return "bg-red-100 text-red-800";
       default:
@@ -326,24 +334,34 @@ export default function ClientBookingsPage() {
                 All ({bookings.length})
               </button>
               <button
-                onClick={() => setFilter("PENDING")}
+                onClick={() => setFilter("PENDING_PAYMENT")}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  filter === "PENDING"
-                    ? "bg-gray-100 text-gray-800"
+                  filter === "PENDING_PAYMENT"
+                    ? "bg-orange-100 text-orange-800"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
               >
-                Pending ({getStatusCount("PENDING")})
+                Awaiting Payment ({getStatusCount("PENDING_PAYMENT")})
               </button>
               <button
-                onClick={() => setFilter("CONFIRMED")}
+                onClick={() => setFilter("PENDING")}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  filter === "CONFIRMED"
+                  filter === "PENDING"
+                    ? "bg-indigo-100 text-indigo-800"
+                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                }`}
+              >
+                Awaiting Acceptance ({getStatusCount("PENDING")})
+              </button>
+              <button
+                onClick={() => setFilter("ACCEPTED")}
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  filter === "ACCEPTED"
                     ? "bg-blue-100 text-blue-800"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
               >
-                Confirmed ({getStatusCount("CONFIRMED")})
+                Confirmed ({getStatusCount("ACCEPTED")})
               </button>
               <button
                 onClick={() => setFilter("IN_PROGRESS")}

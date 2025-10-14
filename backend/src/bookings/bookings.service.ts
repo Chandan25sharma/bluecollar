@@ -228,16 +228,23 @@ export class BookingsService {
     } else if (status === BookingStatus.COMPLETED) {
       await this.notificationsService.notifyBookingCompleted(bookingId);
       
-      // Create payment record
-      await this.prisma.payment.create({
-        data: {
-          bookingId: booking.id,
-          amount: booking.totalAmount,
-          commission: booking.totalAmount * 0.1, // 10% commission
-          status: 'COMPLETED',
-          method: 'CASH', // Hardcoded payment method
-        }
+      // Create payment record for completed bookings (if payment doesn't exist)
+      const existingPayment = await this.prisma.payment.findUnique({
+        where: { bookingId: booking.id }
       });
+      
+      if (!existingPayment) {
+        await this.prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            amount: booking.totalAmount,
+            commission: booking.totalAmount * 0.1, // 10% commission
+            providerAmount: booking.totalAmount * 0.9, // 90% to provider
+            status: 'PAID', // Use correct enum value
+            method: 'CASH', // Cash payment for completed bookings
+          }
+        });
+      }
     }
 
     return updatedBooking;

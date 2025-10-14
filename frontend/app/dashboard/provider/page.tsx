@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import ProviderHeader from "../../../components/ProviderHeader";
 import { bookingsAPI, profileAPI, servicesAPI } from "../../../lib/api";
 import { authUtils } from "../../../lib/auth";
+import ProviderAvailabilityToggle from "../../../src/components/ProviderAvailabilityToggle";
 
 interface Service {
   id: string;
@@ -44,6 +45,7 @@ interface ProviderProfile {
   skills: string[];
   rate: number;
   verified: boolean;
+  isActive: boolean;
 }
 
 export default function ProviderDashboard() {
@@ -194,6 +196,17 @@ export default function ProviderDashboard() {
               </div>
             </div>
           </div>
+        </div>
+        {/* Provider Availability Toggle */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+          <ProviderAvailabilityToggle
+            initialState={profile?.isActive || false}
+            onToggle={(newState) => {
+              setProfile((prev) =>
+                prev ? { ...prev, isActive: newState } : null
+              );
+            }}
+          />
         </div>
         {/* Quick Actions */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">

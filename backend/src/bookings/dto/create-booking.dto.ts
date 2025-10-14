@@ -28,4 +28,8 @@ export class CreateBookingDto {
   @IsOptional()
   @IsNumber()
   clientLongitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  duration?: number; // Duration in hours (1 or 2)
 }

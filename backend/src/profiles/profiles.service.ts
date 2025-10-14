@@ -252,7 +252,10 @@ export class ProfilesService {
     minRate?: number;
     maxRate?: number;
   }) {
-    const where: any = {};
+    const where: any = {
+      // Only show active providers to clients
+      isActive: true,
+    };
 
     if (filters?.verified !== undefined) {
       where.verified = filters.verified;
@@ -301,5 +304,61 @@ export class ProfilesService {
       },
       orderBy: { user: { createdAt: 'desc' } },
     });
+  }
+
+  /**
+   * Toggle provider availability status
+   */
+  async toggleProviderAvailability(userId: string) {
+    // Find provider profile
+    const provider = await this.prisma.providerProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!provider) {
+      throw new Error('Provider profile not found');
+    }
+
+    // Toggle the isActive status
+    const updatedProvider = await this.prisma.providerProfile.update({
+      where: { id: provider.id },
+      data: { isActive: !provider.isActive },
+      include: {
+        user: {
+          select: {
+            email: true,
+            phone: true,
+          }
+        }
+      }
+    });
+
+    return {
+      id: updatedProvider.id,
+      name: updatedProvider.name,
+      isActive: updatedProvider.isActive,
+      verified: updatedProvider.verified,
+    };
+  }
+
+  /**
+   * Get provider availability status
+   */
+  async getProviderAvailability(userId: string) {
+    const provider = await this.prisma.providerProfile.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        isActive: true,
+        verified: true,
+      }
+    });
+
+    if (!provider) {
+      throw new Error('Provider profile not found');
+    }
+
+    return provider;
   }
 }

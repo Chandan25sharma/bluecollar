@@ -15,10 +15,12 @@ enum Role {
 }
 
 enum BookingStatus {
-  PENDING
-  ACCEPTED
-  COMPLETED
-  CANCELLED
+  PENDING_PAYMENT  // Booking created, waiting for payment
+  PENDING          // Payment completed, waiting for provider acceptance
+  ACCEPTED         // Provider accepted the booking
+  IN_PROGRESS      // Work is in progress
+  COMPLETED        // Work completed
+  CANCELLED        // Booking cancelled
 }
 
 enum AdminRole {
@@ -83,6 +85,7 @@ model ProviderProfile {
   skills             String[]              // Array of skills for MongoDB
   rate               Float
   verified           Boolean               @default(false)
+  isActive           Boolean               @default(true)  // Provider availability toggle
   verificationStatus VerificationStatus    @default(PENDING)
   rejectionReason    String?               // Reason if rejected by admin
   bankName           String?
@@ -128,7 +131,8 @@ model Service {
   id          String           @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   description String
-  price       Float
+  price       Float            // Base price per hour
+  priceFor2Hours Float?        // Price for 2 hours (optional, defaults to price * 2)
   category    String
   duration    String
   isActive    Boolean          @default(true)
@@ -141,8 +145,10 @@ model Service {
 
 model Booking {
   id              String          @id @default(auto()) @map("_id") @db.ObjectId
-  status          BookingStatus   @default(PENDING)
-  date            DateTime
+  status          BookingStatus   @default(PENDING_PAYMENT)
+  date            DateTime        // Start date/time
+  endTime         DateTime?       // End date/time for duration
+  duration        Int             @default(1) // Duration in hours (1 or 2)
   notes           String?
   totalAmount     Float
   distance        Float?          // Distance between client and provider in km
@@ -173,15 +179,28 @@ model Booking {
   notifications Notification[]
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model Payment {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  amount      Float
-  commission  Float
-  status      String   @default("PENDING")
-  method      String   @default("CASH") // For now, hardcoded payment method
-  booking     Booking  @relation(fields: [bookingId], references: [id])
-  bookingId   String   @unique @db.ObjectId
-  createdAt   DateTime @default(now())
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  amount          Float
+  currency        String        @default("INR")
+  commission      Float
+  providerAmount  Float         // Amount provider gets after commission
+  status          PaymentStatus @default(PENDING)
+  method          String        @default("RAZORPAY")
+  transactionId   String?       // Razorpay payment ID
+  razorpayOrderId String?       // Razorpay order ID
+  signature       String?       // Razorpay signature for verification
+  booking         Booking       @relation(fields: [bookingId], references: [id])
+  bookingId       String        @unique @db.ObjectId
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Review {
