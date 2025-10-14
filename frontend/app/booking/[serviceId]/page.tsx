@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import LocationPicker from "../../../components/LocationPicker";
 import { bookingsAPI, servicesAPI } from "../../../lib/api";
 import { authUtils } from "../../../lib/auth";
+import { LocationData } from "../../../lib/location";
 
 interface Service {
   id: string;
@@ -36,6 +38,13 @@ export default function BookingPage() {
   // Form data
   const [bookingDate, setBookingDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [serviceLocation, setServiceLocation] = useState<LocationData | null>(
+    null
+  );
+
+  const handleLocationSelect = (location: LocationData) => {
+    setServiceLocation(location);
+  };
 
   useEffect(() => {
     // Check authentication
@@ -77,14 +86,40 @@ export default function BookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Validate required fields
+    if (!bookingDate) {
+      setError("Please select a date and time");
+      return;
+    }
+
+    if (!serviceLocation) {
+      setError("Please select the service location");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      await bookingsAPI.createBooking({
+      const bookingData: any = {
         serviceId: service!.id,
         date: bookingDate,
         notes: notes.trim() || undefined,
-      });
+      };
+
+      // Add location data if selected
+      if (serviceLocation) {
+        bookingData.clientAddress = serviceLocation.display_name;
+        bookingData.clientLatitude = serviceLocation.latitude;
+        bookingData.clientLongitude = serviceLocation.longitude;
+      }
+
+      // Add provider ID if specified
+      if (providerId) {
+        bookingData.providerId = providerId;
+      }
+
+      await bookingsAPI.createBooking(bookingData);
 
       setSuccess(true);
       setTimeout(() => {
@@ -261,6 +296,22 @@ export default function BookingPage() {
                     />
                     <p className="mt-1 text-xs text-gray-500">
                       Provider will confirm the final visit time
+                    </p>
+                  </div>
+
+                  {/* Service Location */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Service Location *
+                    </label>
+                    <LocationPicker
+                      onLocationSelect={handleLocationSelect}
+                      placeholder="Where should the service be performed?"
+                      required
+                      showCurrentLocationButton
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      This is where the service will be performed
                     </p>
                   </div>
 

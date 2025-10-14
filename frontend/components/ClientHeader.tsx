@@ -55,7 +55,7 @@ export default function ClientHeader() {
             href="/dashboard/client/Services"
             className="text-gray-700 hover:text-blue-600 font-medium text-sm"
           >
-            Browse Services
+            Services
           </a>
           <a
             href="/dashboard/client/bookings"

@@ -3,17 +3,39 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import ClientHeader from "../../../../components/ClientHeader";
+import { bookingsAPI } from "../../../../lib/api";
 
 interface Booking {
   id: string;
-  service: string;
-  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled";
+  status: "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   date: string;
-  provider: string;
-  price: number;
-  rating?: number;
-  address: string;
-  duration: string;
+  clientAddress: string;
+  clientLatitude?: number;
+  clientLongitude?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  service: {
+    id: string;
+    title: string;
+    price: number;
+    duration: string;
+    category: string;
+  };
+  provider: {
+    id: string;
+    businessName: string;
+    rating: number;
+    user: {
+      email: string;
+      phone: string;
+    };
+  };
+  payment?: {
+    id: string;
+    amount: number;
+    status: string;
+  };
 }
 
 export default function ClientBookingsPage() {
@@ -23,79 +45,14 @@ export default function ClientBookingsPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Simulate API call with mock data
     const fetchBookings = async () => {
       setIsLoading(true);
       try {
-        // Mock data - in real app, this would come from API
-        const mockBookings: Booking[] = [
-          {
-            id: "1",
-            service: "Electrical Wiring Installation",
-            status: "completed",
-            date: "2023-10-15",
-            provider: "John's Electrical Services",
-            price: 250,
-            rating: 5,
-            address: "123 Main St, Apt 4B",
-            duration: "3 hours",
-          },
-          {
-            id: "2",
-            service: "Kitchen Plumbing Repair",
-            status: "in-progress",
-            date: "2023-10-20",
-            provider: "Mike's Plumbing",
-            price: 120,
-            address: "123 Main St, Apt 4B",
-            duration: "2 hours",
-          },
-          {
-            id: "3",
-            service: "Furniture Assembly",
-            status: "confirmed",
-            date: "2023-10-25",
-            provider: "Handyman Services",
-            price: 85,
-            address: "123 Main St, Apt 4B",
-            duration: "1.5 hours",
-          },
-          {
-            id: "4",
-            service: "Air Conditioning Service",
-            status: "pending",
-            date: "2023-11-01",
-            provider: "Cool Air Experts",
-            price: 99,
-            address: "123 Main St, Apt 4B",
-            duration: "2 hours",
-          },
-          {
-            id: "5",
-            service: "Deep Cleaning Service",
-            status: "cancelled",
-            date: "2023-09-10",
-            provider: "CleanPro",
-            price: 150,
-            address: "123 Main St, Apt 4B",
-            duration: "4 hours",
-          },
-          {
-            id: "6",
-            service: "TV Mounting",
-            status: "completed",
-            date: "2023-09-28",
-            provider: "Install Experts",
-            price: 75,
-            rating: 4,
-            address: "123 Main St, Apt 4B",
-            duration: "1 hour",
-          },
-        ];
-
-        setBookings(mockBookings);
+        const response = await bookingsAPI.getClientBookings();
+        setBookings(response.data);
       } catch (error) {
         console.error("Failed to fetch bookings:", error);
+        setBookings([]);
       } finally {
         setIsLoading(false);
       }
@@ -106,15 +63,15 @@ export default function ClientBookingsPage() {
 
   const statusColor = (status: string) => {
     switch (status) {
-      case "completed":
+      case "COMPLETED":
         return "bg-green-100 text-green-800";
-      case "confirmed":
+      case "CONFIRMED":
         return "bg-blue-100 text-blue-800";
-      case "in-progress":
+      case "IN_PROGRESS":
         return "bg-yellow-100 text-yellow-800";
-      case "pending":
+      case "PENDING":
         return "bg-gray-100 text-gray-800";
-      case "cancelled":
+      case "CANCELLED":
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -123,7 +80,7 @@ export default function ClientBookingsPage() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "completed":
+      case "COMPLETED":
         return (
           <svg
             className="w-5 h-5 mr-2"
@@ -139,7 +96,7 @@ export default function ClientBookingsPage() {
             />
           </svg>
         );
-      case "confirmed":
+      case "CONFIRMED":
         return (
           <svg
             className="w-5 h-5 mr-2"
@@ -155,7 +112,7 @@ export default function ClientBookingsPage() {
             />
           </svg>
         );
-      case "in-progress":
+      case "IN_PROGRESS":
         return (
           <svg
             className="w-5 h-5 mr-2"
@@ -171,7 +128,7 @@ export default function ClientBookingsPage() {
             />
           </svg>
         );
-      case "pending":
+      case "PENDING":
         return (
           <svg
             className="w-5 h-5 mr-2"
@@ -187,7 +144,7 @@ export default function ClientBookingsPage() {
             />
           </svg>
         );
-      case "cancelled":
+      case "CANCELLED":
         return (
           <svg
             className="w-5 h-5 mr-2"
@@ -228,13 +185,19 @@ export default function ClientBookingsPage() {
 
   const sortedBookings = [...filteredBookings].sort((a, b) => {
     if (sortBy === "date-desc") {
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
+      return (
+        new Date(b.date || b.createdAt).getTime() -
+        new Date(a.date || a.createdAt).getTime()
+      );
     } else if (sortBy === "date-asc") {
-      return new Date(a.date).getTime() - new Date(b.date).getTime();
+      return (
+        new Date(a.date || a.createdAt).getTime() -
+        new Date(b.date || b.createdAt).getTime()
+      );
     } else if (sortBy === "price-desc") {
-      return b.price - a.price;
+      return b.service.price - a.service.price;
     } else if (sortBy === "price-asc") {
-      return a.price - b.price;
+      return a.service.price - b.service.price;
     }
     return 0;
   });
@@ -330,21 +293,21 @@ export default function ClientBookingsPage() {
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
               <h3 className="text-sm font-medium text-gray-500">Upcoming</h3>
               <p className="text-2xl font-bold text-gray-900">
-                {getStatusCount("confirmed") +
-                  getStatusCount("pending") +
-                  getStatusCount("in-progress")}
+                {getStatusCount("CONFIRMED") +
+                  getStatusCount("PENDING") +
+                  getStatusCount("IN_PROGRESS")}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
               <h3 className="text-sm font-medium text-gray-500">Completed</h3>
               <p className="text-2xl font-bold text-gray-900">
-                {getStatusCount("completed")}
+                {getStatusCount("COMPLETED")}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
               <h3 className="text-sm font-medium text-gray-500">Cancelled</h3>
               <p className="text-2xl font-bold text-gray-900">
-                {getStatusCount("cancelled")}
+                {getStatusCount("CANCELLED")}
               </p>
             </div>
           </div>
@@ -363,54 +326,54 @@ export default function ClientBookingsPage() {
                 All ({bookings.length})
               </button>
               <button
-                onClick={() => setFilter("pending")}
+                onClick={() => setFilter("PENDING")}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  filter === "pending"
+                  filter === "PENDING"
                     ? "bg-gray-100 text-gray-800"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
               >
-                Pending ({getStatusCount("pending")})
+                Pending ({getStatusCount("PENDING")})
               </button>
               <button
-                onClick={() => setFilter("confirmed")}
+                onClick={() => setFilter("CONFIRMED")}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  filter === "confirmed"
+                  filter === "CONFIRMED"
                     ? "bg-blue-100 text-blue-800"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
               >
-                Confirmed ({getStatusCount("confirmed")})
+                Confirmed ({getStatusCount("CONFIRMED")})
               </button>
               <button
-                onClick={() => setFilter("in-progress")}
+                onClick={() => setFilter("IN_PROGRESS")}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  filter === "in-progress"
+                  filter === "IN_PROGRESS"
                     ? "bg-yellow-100 text-yellow-800"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
               >
-                In Progress ({getStatusCount("in-progress")})
+                In Progress ({getStatusCount("IN_PROGRESS")})
               </button>
               <button
-                onClick={() => setFilter("completed")}
+                onClick={() => setFilter("COMPLETED")}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  filter === "completed"
+                  filter === "COMPLETED"
                     ? "bg-green-100 text-green-800"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
               >
-                Completed ({getStatusCount("completed")})
+                Completed ({getStatusCount("COMPLETED")})
               </button>
               <button
-                onClick={() => setFilter("cancelled")}
+                onClick={() => setFilter("CANCELLED")}
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  filter === "cancelled"
+                  filter === "CANCELLED"
                     ? "bg-red-100 text-red-800"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                 }`}
               >
-                Cancelled ({getStatusCount("cancelled")})
+                Cancelled ({getStatusCount("CANCELLED")})
               </button>
             </div>
 
@@ -499,7 +462,7 @@ export default function ClientBookingsPage() {
                       <div className="flex-1">
                         <div className="flex items-center">
                           <h3 className="text-lg font-medium text-gray-900">
-                            {booking.service}
+                            {booking.service.title}
                           </h3>
                           <span
                             className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor(
@@ -507,7 +470,7 @@ export default function ClientBookingsPage() {
                             )}`}
                           >
                             {statusIcon(booking.status)}
-                            {booking.status.replace("-", " ")}
+                            {booking.status.replace("_", " ")}
                           </span>
                         </div>
 
@@ -526,7 +489,7 @@ export default function ClientBookingsPage() {
                                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                               />
                             </svg>
-                            {booking.provider}
+                            {booking.provider.businessName}
                           </div>
 
                           <div className="flex items-center">
@@ -566,7 +529,7 @@ export default function ClientBookingsPage() {
                                 d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                               />
                             </svg>
-                            {booking.address}
+                            {booking.clientAddress}
                           </div>
 
                           <div className="flex items-center">
@@ -583,7 +546,8 @@ export default function ClientBookingsPage() {
                                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                               />
                             </svg>
-                            ${booking.price} • {booking.duration}
+                            ${booking.service.price} •{" "}
+                            {booking.service.duration}
                           </div>
                         </div>
                       </div>
@@ -595,7 +559,7 @@ export default function ClientBookingsPage() {
                         >
                           View Details
                         </Link>
-                        {booking.status === "completed" && !booking.rating && (
+                        {booking.status === "COMPLETED" && (
                           <Link
                             href={`/dashboard/client/bookings/${booking.id}/review`}
                             className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -605,30 +569,6 @@ export default function ClientBookingsPage() {
                         )}
                       </div>
                     </div>
-
-                    {booking.rating && (
-                      <div className="mt-4 flex items-center">
-                        <div className="flex items-center">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <svg
-                              key={star}
-                              className={`h-5 w-5 ${
-                                star <= booking.rating!
-                                  ? "text-yellow-400"
-                                  : "text-gray-300"
-                              }`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                        </div>
-                        <span className="ml-2 text-sm text-gray-500">
-                          You rated this service
-                        </span>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
