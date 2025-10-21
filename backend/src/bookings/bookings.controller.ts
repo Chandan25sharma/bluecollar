@@ -23,10 +23,34 @@ export class BookingsController {
   @Post()
   async createBooking(@Request() req, @Body() createBookingDto: CreateBookingDto) {
     try {
-      return await this.bookingsService.createBooking(req.user.id, createBookingDto);
+      // NEW FLOW: Create booking that requires payment first
+      return await this.bookingsService.createBookingWithPayment(req.user.id, {
+        ...createBookingDto,
+        paymentData: {} // Will be filled by payment service
+      });
     } catch (error) {
       throw new HttpException(
         error.message || 'Failed to create booking',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('confirm/:bookingId')
+  async confirmBookingAfterPayment(
+    @Request() req, 
+    @Param('bookingId') bookingId: string,
+    @Body() confirmData: { paymentId: string }
+  ) {
+    try {
+      return await this.bookingsService.confirmBookingAfterPayment(
+        bookingId, 
+        confirmData.paymentId
+      );
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to confirm booking',
         HttpStatus.BAD_REQUEST,
       );
     }

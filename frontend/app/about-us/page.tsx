@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
+import Footer from "../../components/Footer";
+import Header from "../../components/Header";
 
 export default function AboutUsPage() {
   const router = useRouter();
@@ -13,37 +13,36 @@ export default function AboutUsPage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
       <Header />
-{/* Hero */}
-<section className="relative bg-gradient-to-r from-green-600 to-teal-500 text-white py-20 px-6">
-  {/* Back Button */}
-  <div className="absolute top-4 left-4">
-    <button
-      onClick={() => router.back()}
-      className="flex items-center text-white font-medium hover:text-yellow-300 transition"
-    >
-      <FiArrowLeft className="mr-2" /> Back
-    </button>
-  </div>
+      {/* Hero */}
+      <section className="relative bg-gradient-to-r from-green-600 to-teal-500 text-white py-20 px-6">
+        {/* Back Button */}
+        <div className="absolute top-4 left-4">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center text-white font-medium hover:text-yellow-300 transition"
+          >
+            <FiArrowLeft className="mr-2" /> Back
+          </button>
+        </div>
 
-  <div className="max-w-5xl mx-auto text-center">
-    <motion.h1
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="text-4xl md:text-5xl font-bold mb-4"
-    >
-      About <span className="text-yellow-300">BlueCollar</span>
-    </motion.h1>
-    <motion.p
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-      className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto"
-    >
-      Connecting people with trusted blue-collar professionals since 2023.
-    </motion.p>
-  </div>
-</section>
-
+        <div className="max-w-5xl mx-auto text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-5xl font-bold mb-4"
+          >
+            About <span className="text-yellow-300">BlueCollar</span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-lg md:text-xl opacity-90 max-w-2xl mx-auto"
+          >
+            Connecting people with trusted blue-collar professionals since 2023.
+          </motion.p>
+        </div>
+      </section>
 
       {/* Mission */}
       <section className="py-16 px-6 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
@@ -54,11 +53,14 @@ export default function AboutUsPage() {
         >
           <h2 className="text-3xl font-bold mb-4">Our Mission</h2>
           <p className="text-gray-700 mb-4">
-            At BlueCollar, our mission is to empower skilled professionals and make it seamless
-            for customers to access reliable services. We bridge the gap between supply and demand in the blue-collar workforce.
+            At BlueCollar, our mission is to empower skilled professionals and
+            make it seamless for customers to access reliable services. We
+            bridge the gap between supply and demand in the blue-collar
+            workforce.
           </p>
           <p className="text-gray-700">
-            Whether you need an electrician, plumber, carpenter, or tailor — we've got you covered.
+            Whether you need an electrician, plumber, carpenter, or tailor —
+            we've got you covered.
           </p>
         </motion.div>
         <motion.div
@@ -83,7 +85,8 @@ export default function AboutUsPage() {
             Our Core Values
           </motion.h2>
           <p className="text-gray-600 max-w-2xl mx-auto mb-10">
-            We believe in building trust, offering affordability, and ensuring convenience for our clients and professionals alike.
+            We believe in building trust, offering affordability, and ensuring
+            convenience for our clients and professionals alike.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -131,12 +134,13 @@ export default function AboutUsPage() {
             Meet Our Team
           </motion.h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            A dedicated team passionate about connecting communities with skilled professionals.
+            A dedicated team passionate about connecting communities with
+            skilled professionals.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { name: "Chandan Sharma", role: "Founder & CEO" },
+            { name: "xyz", role: "Founder & CEO" },
             { name: "Aisha Khan", role: "Head of Operations" },
             { name: "David Lee", role: "Tech Lead" },
           ].map((member, i) => (
@@ -174,7 +178,8 @@ export default function AboutUsPage() {
           transition={{ delay: 0.1 }}
           className="mb-8 opacity-90 max-w-md mx-auto"
         >
-          Be part of a growing community of skilled professionals and satisfied customers.
+          Be part of a growing community of skilled professionals and satisfied
+          customers.
         </motion.p>
         <motion.a
           whileHover={{ scale: 1.05 }}

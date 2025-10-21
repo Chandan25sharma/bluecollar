@@ -166,13 +166,53 @@ export class PaymentsService {
         }
       });
 
-      // Update booking status to pending (payment received, waiting for provider acceptance)
-      await this.prisma.booking.update({
+      // 🎯 PAYMENT-FIRST FLOW: Update booking to ACCEPTED and notify provider
+      const updatedBooking = await this.prisma.booking.update({
         where: { id: payment.bookingId },
         data: { 
-          status: 'PENDING' // Move to pending now that payment is confirmed
+          status: 'ACCEPTED', // Now provider can see this booking and respond
+          updatedAt: new Date()
+        },
+        include: {
+          client: {
+            include: {
+              user: {
+                select: {
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          provider: {
+            include: {
+              user: {
+                select: {
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          service: true
         }
       });
+
+      // 🔔 NOW notify provider about the PAID booking
+      try {
+        await this.prisma.notification.create({
+          data: {
+            userId: updatedBooking.provider.userId,
+            title: 'New Paid Booking Request!',
+            message: `You have a new booking request for ${updatedBooking.service.title}. Payment has been secured - ₹${updatedPayment.amount}`,
+            type: 'BOOKING_CREATED',
+            bookingId: updatedBooking.id,
+            read: false,
+          }
+        });
+      } catch (notificationError) {
+        console.log('Failed to send notification:', notificationError);
+      }
 
       return {
         success: true,
@@ -180,7 +220,9 @@ export class PaymentsService {
         transactionId: razorpay_payment_id,
         amount: updatedPayment.amount,
         status: 'PAID',
-        bookingId: payment.bookingId
+        bookingId: payment.bookingId,
+        booking: updatedBooking,
+        message: '🎉 Payment successful! Provider has been notified of your booking request.'
       };
 
     } catch (error) {
@@ -304,5 +346,47 @@ export class PaymentsService {
       console.error('Refund failed:', error);
       throw new BadRequestException('Failed to process refund');
     }
+  }
+
+  /**
+   * Get booking for payment (used by Cashfree integration)
+   */
+  async getBookingForPayment(bookingId: string, clientUserId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        client: {
+          include: {
+            user: {
+              select: {
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
+        provider: {
+          include: {
+            user: {
+              select: {
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
+        service: true
+      }
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (booking.client.userId !== clientUserId) {
+      throw new BadRequestException('You can only pay for your own bookings');
+    }
+
+    return booking;
   }
 }

@@ -6,6 +6,7 @@ import {
   FiCalendar,
   FiGrid,
   FiHome,
+  FiMessageSquare,
   FiSearch,
   FiSettings,
   FiUser,
@@ -64,10 +65,11 @@ export default function ClientHeader() {
             My Bookings
           </a>
           <a
-            href="/dashboard/client/profile"
-            className="text-gray-700 hover:text-blue-600 font-medium text-sm"
+            href="/dashboard/client/messages"
+            className="text-gray-700 hover:text-blue-600 font-medium text-sm flex items-center"
           >
-            Profile
+            <FiMessageSquare size={16} className="mr-1" />
+            Messages
           </a>
         </div>
 
@@ -83,6 +85,21 @@ export default function ClientHeader() {
           >
             <FiSettings size={18} />
           </a>
+
+          {/* User Profile Icon */}
+          <div className="relative">
+            <a
+              href="/dashboard/client/profile"
+              className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-full px-3 py-2 transition-colors"
+              title="Profile"
+            >
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <FiUser size={16} className="text-white" />
+              </div>
+              <span className="text-sm font-medium">Profile</span>
+            </a>
+          </div>
+
           <a
             href="/login"
             className="text-sm font-medium text-red-500 hover:text-red-600"
@@ -120,6 +137,14 @@ export default function ClientHeader() {
         >
           <FiCalendar size={20} />
           <span className="text-xs">Bookings</span>
+        </a>
+
+        <a
+          href="/dashboard/client/messages"
+          className="flex flex-col items-center text-gray-600 hover:text-blue-600"
+        >
+          <FiMessageSquare size={20} />
+          <span className="text-xs">Messages</span>
         </a>
 
         <a

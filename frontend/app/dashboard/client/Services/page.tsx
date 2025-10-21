@@ -12,12 +12,13 @@ import {
 } from "react-icons/fi";
 import ClientHeader from "../../../../components/ClientHeader";
 import MapView from "../../../../components/MapView";
-import { bookingsAPI, profileAPI, servicesAPI } from "../../../../lib/api";
+import { profileAPI, servicesAPI } from "../../../../lib/api";
 import { authUtils } from "../../../../lib/auth";
 import {
   calculateDistance,
   openCoordinatesInGoogleMaps,
 } from "../../../../lib/location";
+import CreateBookingWithPayment from "../../../../src/components/CreateBookingWithPayment";
 
 interface Service {
   id: string;
@@ -30,8 +31,15 @@ interface Service {
   provider: {
     id: string;
     businessName: string;
+    name: string;
+    rate: number;
+    verified: boolean;
     rating?: number;
     reviewCount?: number;
+    user: {
+      email: string;
+      phone: string;
+    };
   };
   createdAt: string;
   updatedAt?: string;
@@ -105,9 +113,33 @@ export default function ClientServicesPage() {
     address: string;
   } | null>(null);
 
+  // Location selection states
+  const [showLocationSelection, setShowLocationSelection] = useState(false);
+  const [selectedServiceLocation, setSelectedServiceLocation] = useState<{
+    address: string;
+    latitude: number;
+    longitude: number;
+    city?: string;
+    state?: string;
+  } | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [pickerLocation, setPickerLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const [pickedAddress, setPickedAddress] = useState<{
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+  } | null>(null);
+  const [isMapMode, setIsMapMode] = useState(true); // true for map, false for address input
+
   // Booking flow states
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showServiceDetails, setShowServiceDetails] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [availableProviders, setAvailableProviders] = useState<Provider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(
     null
@@ -133,59 +165,40 @@ export default function ClientServicesPage() {
         return;
       }
 
-      // First fetch client profile to get location
+      // First fetch client profile to save location for later use
       const profileResponse = await profileAPI.getClientProfile();
-
       if (profileResponse.data) {
         setClientProfile(profileResponse.data);
+      }
 
-        // If client has location, fetch nearby services (within 10km)
-        if (profileResponse.data.latitude && profileResponse.data.longitude) {
-          console.log(
-            "Client has location, fetching nearby services within 10km"
-          );
+      // Always fetch ALL services regardless of location
+      console.log("Fetching all available services");
+      const servicesResponse = await servicesAPI.getServices();
 
-          const nearbyServicesResponse = await servicesAPI.getNearbyServices(
-            profileResponse.data.latitude,
-            profileResponse.data.longitude,
-            undefined, // no category filter, show all services
-            10 // 10km radius
-          );
-
-          if (nearbyServicesResponse.data) {
-            // Transform nearby services to match the expected format
-            const transformedServices = nearbyServicesResponse.data.map(
-              (service: any) => ({
-                ...service,
-                provider: {
-                  ...service.provider,
-                  rating: service.provider.rating || 4.2 + Math.random() * 0.8,
-                  reviewCount:
-                    service.provider.reviewCount ||
-                    Math.floor(Math.random() * 200) + 50,
-                  businessName: service.provider.name,
-                },
-              })
-            );
-
-            setServices(transformedServices);
-            console.log(
-              `Found ${transformedServices.length} nearby services within 10km`
-            );
-          }
-        } else {
-          // Client doesn't have location, show message to update profile
-          console.log("Client location not available, fetching all services");
-          const servicesResponse = await servicesAPI.getServices();
-          if (servicesResponse.data) {
-            setServices(servicesResponse.data);
-          }
-
-          // Show location prompt
-          alert(
-            "To see services from providers near your location, please update your profile with your address."
-          );
-        }
+      if (servicesResponse.data) {
+        // Transform services to match expected format
+        const transformedServices = servicesResponse.data.map(
+          (service: any) => ({
+            ...service,
+            provider: {
+              ...service.provider,
+              rating: service.provider.rating || 4.2 + Math.random() * 0.8,
+              reviewCount:
+                service.provider.reviewCount ||
+                Math.floor(Math.random() * 200) + 50,
+              businessName: service.provider.name,
+              name: service.provider.name,
+              rate: service.provider.rate || service.price,
+              verified: service.provider.verified || false,
+              user: service.provider.user || {
+                email: service.provider.email || "provider@example.com",
+                phone: service.provider.phone || "+91-XXXXXXXXXX",
+              },
+            },
+          })
+        );
+        setServices(transformedServices);
+        console.log(`Found ${transformedServices.length} total services`);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -193,7 +206,28 @@ export default function ClientServicesPage() {
       try {
         const servicesResponse = await servicesAPI.getServices();
         if (servicesResponse.data) {
-          setServices(servicesResponse.data);
+          // Transform services to match expected format
+          const transformedServices = servicesResponse.data.map(
+            (service: any) => ({
+              ...service,
+              provider: {
+                ...service.provider,
+                rating: service.provider.rating || 4.2 + Math.random() * 0.8,
+                reviewCount:
+                  service.provider.reviewCount ||
+                  Math.floor(Math.random() * 200) + 50,
+                businessName: service.provider.name,
+                name: service.provider.name,
+                rate: service.provider.rate || service.price,
+                verified: service.provider.verified || false,
+                user: service.provider.user || {
+                  email: service.provider.email || "provider@example.com",
+                  phone: service.provider.phone || "+91-XXXXXXXXXX",
+                },
+              },
+            })
+          );
+          setServices(transformedServices);
         }
       } catch (fallbackError) {
         console.error("Error fetching fallback services:", fallbackError);
@@ -226,7 +260,27 @@ export default function ClientServicesPage() {
         return;
       }
 
-      setServices(servicesData);
+      // Transform services to match expected format
+      const transformedServices = servicesData.map((service: any) => ({
+        ...service,
+        provider: {
+          ...service.provider,
+          rating: service.provider.rating || 4.2 + Math.random() * 0.8,
+          reviewCount:
+            service.provider.reviewCount ||
+            Math.floor(Math.random() * 200) + 50,
+          businessName: service.provider.name,
+          name: service.provider.name,
+          rate: service.provider.rate || service.price,
+          verified: service.provider.verified || false,
+          user: service.provider.user || {
+            email: service.provider.email || "provider@example.com",
+            phone: service.provider.phone || "+91-XXXXXXXXXX",
+          },
+        },
+      }));
+
+      setServices(transformedServices);
     } catch (error) {
       console.error("Error fetching services:", error);
       alert(
@@ -258,63 +312,66 @@ export default function ClientServicesPage() {
     console.log("Service:", service);
 
     setSelectedService(service);
+
+    // Check authentication status first
+    const isAuthenticated = authUtils.isAuthenticated();
+    console.log("User authenticated:", isAuthenticated);
+
+    if (!isAuthenticated) {
+      alert("Please log in to book services");
+      return;
+    }
+
+    // Check if client has location in profile
+    if (!clientProfile?.latitude || !clientProfile?.longitude) {
+      alert(
+        "Please update your profile with your location to find nearby providers."
+      );
+      return;
+    }
+
+    // Set default location to client's saved location
+    setSelectedServiceLocation({
+      address: clientProfile.address || "Your saved location",
+      latitude: clientProfile.latitude,
+      longitude: clientProfile.longitude,
+      city: clientProfile.city,
+      state: clientProfile.state,
+    });
+
+    // Show location selection modal
+    setShowLocationSelection(true);
+  };
+
+  const handleLocationConfirm = async () => {
+    if (!selectedService || !selectedServiceLocation) return;
+
     setBookingLoading(true);
+    setShowLocationSelection(false);
 
     try {
-      console.log(
-        "Fetching providers for service:",
-        service.title,
-        "category:",
-        service.category
-      );
-
-      // Check authentication status
-      const isAuthenticated = authUtils.isAuthenticated();
-      console.log("User authenticated:", isAuthenticated);
-
-      if (!isAuthenticated) {
-        alert("Please log in to book services");
-        setBookingLoading(false);
-        return;
-      }
-
-      // Check if client has location coordinates
-      if (!clientProfile?.latitude || !clientProfile?.longitude) {
-        alert(
-          "Please update your profile with your location to find nearby providers."
-        );
-        setBookingLoading(false);
-        return;
-      }
-
-      console.log("Client location:", {
-        lat: clientProfile.latitude,
-        lng: clientProfile.longitude,
-      });
+      console.log("Searching providers for location:", selectedServiceLocation);
 
       // Use the nearby services API to get services within 10km radius
-      // This will return the actual services from providers who offer this specific service
       const response = await servicesAPI.getNearbyServices(
-        clientProfile.latitude,
-        clientProfile.longitude,
-        service.category,
-        10 // 10km radius as requested
+        selectedServiceLocation.latitude,
+        selectedServiceLocation.longitude,
+        selectedService.category,
+        10 // 10km radius
       );
 
       const nearbyServices = response.data || [];
       console.log("API Response - Nearby services:", nearbyServices);
-      console.log("Number of nearby services found:", nearbyServices.length);
 
       if (nearbyServices.length === 0) {
         alert(
-          `No providers offering ${service.category} services found within 10km of your location. Please try other services or contact support.`
+          `No providers offering ${selectedService.category} services found within 10km of the selected location. Please try a different location.`
         );
         setBookingLoading(false);
         return;
       }
 
       // Transform the services response to provider format
-      // Group by provider to avoid duplicates (same provider might have multiple services)
       const providerMap = new Map();
 
       nearbyServices.forEach((serviceItem: any) => {
@@ -327,8 +384,8 @@ export default function ClientServicesPage() {
             email: provider.user?.email || "",
             skills: provider.skills || [],
             rate: provider.rate || serviceItem.price,
-            rating: 4.2 + Math.random() * 0.8, // Random rating 4.2-5.0
-            reviewCount: Math.floor(Math.random() * 200) + 50, // Random reviews 50-250
+            rating: 4.2 + Math.random() * 0.8,
+            reviewCount: Math.floor(Math.random() * 200) + 50,
             distance: serviceItem.distance || provider.distance,
             availability: [
               "9:00 AM",
@@ -363,7 +420,7 @@ export default function ClientServicesPage() {
 
       if (availableProviders.length === 0) {
         alert(
-          `No verified providers offering ${service.category} services found within 10km of your location.`
+          `No verified providers offering ${selectedService.category} services found within 10km of the selected location.`
         );
         setBookingLoading(false);
         return;
@@ -379,6 +436,81 @@ export default function ClientServicesPage() {
       );
     } finally {
       setBookingLoading(false);
+    }
+  };
+
+  // Function to get address from coordinates (reverse geocoding)
+  const getAddressFromCoordinates = async (lat: number, lon: number) => {
+    try {
+      setIsLoadingAddress(true);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+
+      if (data && data.display_name) {
+        const address = {
+          address: data.display_name,
+          city:
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            "",
+          state: data.address?.state || "",
+          country: data.address?.country || "",
+        };
+        setPickedAddress(address);
+        return address;
+      }
+    } catch (error) {
+      console.error("Error getting address:", error);
+    } finally {
+      setIsLoadingAddress(false);
+    }
+    return null;
+  };
+
+  // Handle map click for location picking
+  const handleMapLocationClick = async (lat: number, lon: number) => {
+    setPickerLocation({ latitude: lat, longitude: lon });
+    await getAddressFromCoordinates(lat, lon);
+  };
+
+  // Confirm picked location
+  const handlePickedLocationConfirm = () => {
+    if (pickerLocation && pickedAddress) {
+      setSelectedServiceLocation({
+        address: pickedAddress.address,
+        latitude: pickerLocation.latitude,
+        longitude: pickerLocation.longitude,
+        city: pickedAddress.city,
+        state: pickedAddress.state,
+      });
+      setShowLocationPicker(false);
+      setShowLocationSelection(true);
+    }
+  };
+
+  // Get current location using browser geolocation
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          setPickerLocation({ latitude: lat, longitude: lng });
+          await getAddressFromCoordinates(lat, lng);
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          alert(
+            "Could not access your current location. Please pick a location on the map."
+          );
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser.");
     }
   };
 
@@ -416,153 +548,33 @@ export default function ClientServicesPage() {
       return;
     }
 
-    setBookingLoading(true);
+    // Close time selection modal and open payment modal
+    setShowTimeSelection(false);
+    setShowPaymentModal(true);
+  };
 
-    try {
-      // Convert 12-hour time format to 24-hour format
-      const convertTo24Hour = (time12h: string) => {
-        const [time, modifier] = time12h.split(" ");
-        let [hours, minutes] = time.split(":");
-        if (hours === "12") {
-          hours = "00";
-        }
-        if (modifier === "PM") {
-          hours = (parseInt(hours, 10) + 12).toString();
-        }
-        return `${hours.padStart(2, "0")}:${minutes}`;
-      };
-
-      // Combine date and time into a DateTime object
-      const time24h = convertTo24Hour(selectedTime);
-      const bookingDateTime = new Date(`${selectedDate}T${time24h}:00`);
-
-      const bookingRequest: any = {
-        serviceId: selectedService.id,
-        providerId: selectedProvider.id,
-        date: bookingDateTime.toISOString(),
-        notes: bookingNotes || undefined,
-      };
-
-      // Add client location data if available from user profile
-      if (clientProfile && clientProfile.latitude && clientProfile.longitude) {
-        bookingRequest.clientAddress =
-          clientProfile.address || clientProfile.city || "Client Location";
-        bookingRequest.clientLatitude = clientProfile.latitude;
-        bookingRequest.clientLongitude = clientProfile.longitude;
-
-        // Calculate distance to provider if provider location is available (for logging only)
-        if (selectedProvider.location?.coordinates) {
-          const [providerLng, providerLat] =
-            selectedProvider.location.coordinates;
-          const distance = calculateDistance(
-            clientProfile.latitude,
-            clientProfile.longitude,
-            providerLat,
-            providerLng
-          );
-          console.log("Distance to provider:", distance.toFixed(2), "km");
-        }
-      }
-
-      console.log("Submitting booking request:", bookingRequest);
-      console.log(
-        "Original time:",
-        selectedTime,
-        "Converted:",
-        time24h,
-        "DateTime:",
-        bookingDateTime
-      );
-      console.log(
-        "Service ID type and value:",
-        typeof selectedService.id,
-        selectedService.id
-      );
-      console.log(
-        "Provider ID type and value:",
-        typeof selectedProvider.id,
-        selectedProvider.id
-      );
-
-      // Validate that we have valid IDs
-      if (!selectedService.id || typeof selectedService.id !== "string") {
-        console.error("Invalid service ID:", selectedService.id);
-        alert("Invalid service selected. Please try again.");
-        return;
-      }
-
-      if (!selectedProvider.id || typeof selectedProvider.id !== "string") {
-        console.error("Invalid provider ID:", selectedProvider.id);
-        alert("Invalid provider selected. Please try again.");
-        return;
-      }
-
-      // Check if user is authenticated before making API call
-      if (!authUtils.isAuthenticated()) {
-        console.error("User not authenticated");
-        alert("Please log in to make a booking.");
-        return;
-      }
-
-      // Submit booking request to API
-      const response = await bookingsAPI.createBooking(bookingRequest);
-      console.log("Booking created successfully:", response.data);
-
-      // Show success message and reset state
-      alert(
-        "Booking request sent successfully! The provider will be notified and you'll receive a confirmation."
-      );
-      resetBookingFlow();
-    } catch (error: any) {
-      console.error("Error submitting booking:", error);
-      console.error("Error details:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-      });
-
-      // Try fallback booking method or show appropriate error
-      if (error.response?.status === 401) {
-        alert("Please log in again to make a booking.");
-      } else if (error.response?.status === 404) {
-        alert(
-          "Service or provider not found. Please try selecting a different option."
-        );
-      } else if (error.response?.status >= 500) {
-        // Server error - use mock booking for development
-        console.log("Server error, using mock booking for development");
-        alert(
-          "Booking request submitted! (Development mode - server issue detected)\n" +
-            `Service: ${selectedService.title}\n` +
-            `Provider: ${
-              selectedProvider.businessName || selectedProvider.name
-            }\n` +
-            `Date: ${selectedDate}\n` +
-            `Time: ${selectedTime}`
-        );
-        resetBookingFlow();
-      } else {
-        // Show more specific error message
-        const errorMessage =
-          error.response?.data?.message ||
-          error.response?.data?.error ||
-          error.message ||
-          "Unknown error occurred";
-
-        alert(`Failed to submit booking request: ${errorMessage}`);
-      }
-    } finally {
-      setBookingLoading(false);
-    }
+  const handlePaymentSuccess = (booking: any) => {
+    console.log("Payment successful, booking confirmed:", booking);
+    alert(
+      "Payment successful! Your booking has been confirmed and the provider has been notified."
+    );
+    resetBookingFlow();
   };
 
   const resetBookingFlow = () => {
     setSelectedService(null);
     setSelectedProvider(null);
     setShowServiceDetails(false);
+    setShowLocationSelection(false);
+    setSelectedServiceLocation(null);
+    setShowLocationPicker(false);
+    setPickerLocation(null);
+    setPickedAddress(null);
+    setIsLoadingAddress(false);
+    setIsMapMode(true);
     setShowProviderSelection(false);
     setShowTimeSelection(false);
+    setShowPaymentModal(false);
     setSelectedDate("");
     setSelectedTime("");
     setBookingNotes("");
@@ -630,8 +642,8 @@ export default function ClientServicesPage() {
     <>
       <ClientHeader />
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 pb-20 md:pb-0">
-        {/* Hero Section */}
-        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-700 text-white py-16 px-4 relative overflow-hidden">
+        {/* Hero Section - Compact */}
+        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-700 text-white py-8 md:py-12 px-4 relative overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <svg className="w-full h-full" viewBox="0 0 100 100">
@@ -653,7 +665,7 @@ export default function ClientServicesPage() {
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-bold mb-6"
+              className="text-2xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4"
             >
               Professional Services
             </motion.h1>
@@ -661,149 +673,145 @@ export default function ClientServicesPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-xl md:text-2xl text-green-100 mb-8 max-w-3xl mx-auto"
+              className="text-sm md:text-lg lg:text-xl text-green-100 mb-4 md:mb-6 max-w-2xl mx-auto"
             >
               Connect with trusted professionals for all your home and business
               needs
             </motion.p>
 
-            {/* Search Bar */}
+            {/* Compact Search Bar */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="max-w-2xl mx-auto"
+              className="max-w-lg mx-auto"
             >
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiSearch className="text-gray-400 text-xl" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiSearch className="text-gray-400 text-lg" />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search for services..."
+                  placeholder="Search services..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-gray-900 rounded-xl shadow-lg focus:outline-none focus:ring-4 focus:ring-green-300 border-0 text-lg"
+                  className="w-full pl-10 pr-4 py-3 text-gray-900 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-green-300 border-0 text-sm md:text-base"
                 />
               </div>
             </motion.div>
           </div>
         </div>
 
-        {/* Category Filters */}
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex flex-wrap justify-center gap-4 mb-8">
+        {/* Category Filters - Compact */}
+        <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-wrap justify-center gap-2 md:gap-3 mb-4 md:mb-6">
             {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`px-6 py-3 rounded-full font-medium transition-all flex items-center gap-2 ${
+                className={`px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium transition-all flex items-center gap-1 md:gap-2 ${
                   selectedCategory === category.id
-                    ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg transform scale-105"
+                    ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg scale-105"
                     : "bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 shadow-md"
                 }`}
               >
-                <span className="text-lg">{category.icon}</span>
-                {category.name}
+                <span className="text-sm md:text-base">{category.icon}</span>
+                <span className="hidden sm:inline">{category.name}</span>
+                <span className="sm:hidden">{category.name.split(" ")[0]}</span>
               </button>
             ))}
           </div>
 
-          {/* Location Info Message */}
-          {clientProfile?.latitude && clientProfile?.longitude && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-800">
-                <FiMapPin className="text-lg" />
-                <span className="font-medium">
-                  Showing services within 10km of your location
-                </span>
-              </div>
-              <p className="text-blue-600 text-sm mt-1">
-                Only verified providers near {clientProfile.city || "your area"}{" "}
-                are displayed.
-              </p>
+          {/* General Info Message */}
+          <div className="mb-4 md:mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 text-green-800">
+              <span className="text-base md:text-lg">🔧</span>
+              <span className="font-medium text-xs md:text-sm">
+                Browse all available services - we'll find nearby providers
+                after you select a service
+              </span>
             </div>
-          )}
+          </div>
 
-          {/* Filters & Sort */}
-          <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
-            <div className="flex items-center gap-4">
+          {/* Compact Filters & Sort */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-3">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-gray-700"
+                className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-gray-700 text-sm"
               >
-                <FiFilter />
+                <FiFilter className="text-sm" />
                 Filters
               </button>
 
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-white rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700"
+                className="px-3 py-2 bg-white rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700 text-sm"
               >
-                <option value="popular">Most Popular</option>
+                <option value="popular">Popular</option>
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
                 <option value="rating">Highest Rated</option>
-                <option value="title">Alphabetical</option>
+                <option value="title">A-Z</option>
               </select>
             </div>
 
-            <p className="text-gray-600">
-              {filteredServices.length} services available
+            <p className="text-gray-600 text-sm">
+              {filteredServices.length} services
             </p>
           </div>
 
-          {/* Services Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Services Grid - Compact */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {filteredServices.map((service) => (
               <motion.div
                 key={service.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all cursor-pointer overflow-hidden"
+                whileHover={{ y: -2 }}
+                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer overflow-hidden"
                 onClick={() => handleServiceClick(service)}
               >
-                <div className="h-48 bg-gradient-to-br from-green-100 to-emerald-100 relative overflow-hidden">
+                <div className="h-32 md:h-40 bg-gradient-to-br from-green-100 to-emerald-100 relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                    <FiStar className="text-yellow-500 text-sm" />
-                    <span className="text-sm font-medium">
+                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                    <FiStar className="text-yellow-500 text-xs" />
+                    <span className="text-xs font-medium">
                       {service.provider.rating || 4.5}
                     </span>
                   </div>
                   {service.distance && (
-                    <div className="absolute top-4 left-4 bg-blue-500/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                      <FiMapPin className="text-white text-sm" />
-                      <span className="text-sm font-medium text-white">
+                    <div className="absolute top-2 left-2 bg-blue-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <FiMapPin className="text-white text-xs" />
+                      <span className="text-xs font-medium text-white">
                         {service.distance.toFixed(1)} km
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                <div className="p-4">
+                  <h3 className="text-base md:text-lg font-bold text-gray-900 mb-2 line-clamp-2">
                     {service.title}
                   </h3>
-                  <p className="text-gray-600 mb-4 line-clamp-2">
+                  <p className="text-gray-600 mb-3 line-clamp-2 text-sm">
                     {service.description}
                   </p>
 
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <FiClock className="text-sm" />
-                      <span className="text-sm">{service.duration}</span>
+                  <div className="flex items-center justify-between mb-3 text-xs">
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <FiClock className="text-xs" />
+                      <span>{service.duration}</span>
                     </div>
-                    <div className="text-gray-500 text-sm">
+                    <div className="text-gray-500">
                       {service.provider.reviewCount || 0} reviews
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="text-2xl font-bold text-green-600">
-                      ${service.price}
+                    <div className="text-lg md:text-xl font-bold text-green-600">
+                      ₹{service.price}
                     </div>
                     <button
                       onClick={(e) => {
@@ -814,7 +822,7 @@ export default function ClientServicesPage() {
                         );
                         handleBookNow(service);
                       }}
-                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-3 md:px-4 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium text-sm"
                     >
                       Book Now
                     </button>
@@ -923,6 +931,486 @@ export default function ClientServicesPage() {
                         ? "Finding Providers..."
                         : "Book This Service"}
                     </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Location Selection Modal */}
+        <AnimatePresence>
+          {showLocationSelection && selectedService && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+              onClick={() => setShowLocationSelection(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-gray-800">
+                      Select Service Location
+                    </h3>
+                    <button
+                      onClick={() => setShowLocationSelection(false)}
+                      className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                    >
+                      <FiX />
+                    </button>
+                  </div>
+
+                  <div className="mb-6">
+                    <p className="text-gray-600 mb-4">
+                      Where would you like to get{" "}
+                      <strong>{selectedService.title}</strong> service?
+                    </p>
+
+                    {/* Current/Default Location */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <FiMapPin className="text-green-600 mt-1" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-800 mb-1">
+                            Your Saved Location
+                          </h4>
+                          <p className="text-gray-600 text-sm">
+                            {selectedServiceLocation?.address ||
+                              clientProfile?.address ||
+                              "Your default location"}
+                          </p>
+                          {selectedServiceLocation?.city && (
+                            <p className="text-gray-500 text-xs mt-1">
+                              {selectedServiceLocation.city},{" "}
+                              {selectedServiceLocation.state}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={handleLocationConfirm}
+                          disabled={bookingLoading}
+                          className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                        >
+                          {bookingLoading
+                            ? "Searching..."
+                            : "Use This Location"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Option for Different Location */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <FiMapPin className="text-gray-600" />
+                        <h4 className="font-semibold text-gray-800">
+                          Different Location
+                        </h4>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Need service at a different address? Choose how you want
+                        to select it:
+                      </p>
+
+                      {/* Two options side by side */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Option 1: Type Address */}
+                        <button
+                          onClick={() => {
+                            setShowLocationSelection(false);
+                            setShowLocationPicker(true);
+                            setIsMapMode(false); // Set to address input mode
+                            setPickerLocation(null);
+                            setPickedAddress(null);
+                          }}
+                          className="flex flex-col items-center p-4 border border-gray-300 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-colors"
+                        >
+                          <div className="text-2xl mb-2">⌨️</div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Type Address
+                          </span>
+                          <span className="text-xs text-gray-500 mt-1 text-center">
+                            Enter street, area, city details
+                          </span>
+                        </button>
+
+                        {/* Option 2: Pick from Map */}
+                        <button
+                          onClick={() => {
+                            setShowLocationSelection(false);
+                            setShowLocationPicker(true);
+                            setIsMapMode(true); // Set to map mode
+                            if (
+                              clientProfile?.latitude &&
+                              clientProfile?.longitude
+                            ) {
+                              setPickerLocation({
+                                latitude: clientProfile.latitude,
+                                longitude: clientProfile.longitude,
+                              });
+                            }
+                          }}
+                          className="flex flex-col items-center p-4 border border-gray-300 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-colors"
+                        >
+                          <div className="text-2xl mb-2">📍</div>
+                          <span className="text-sm font-medium text-gray-700">
+                            Pick on Map
+                          </span>
+                          <span className="text-xs text-gray-500 mt-1 text-center">
+                            Click on map to select
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                        <span className="text-blue-600 text-xs font-bold">
+                          i
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-blue-800 text-sm">
+                          We'll find the nearest providers within 10km of your
+                          selected location.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Location Picker Modal */}
+        <AnimatePresence>
+          {showLocationPicker && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+              onClick={() => setShowLocationPicker(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-gray-800">
+                      Pick Service Location
+                    </h3>
+                    <button
+                      onClick={() => setShowLocationPicker(false)}
+                      className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+                    >
+                      <FiX />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Map/Address Input Section */}
+                    <div className="order-2 lg:order-1">
+                      {/* Mode Toggle */}
+                      <div className="mb-4 flex bg-gray-100 rounded-lg p-1">
+                        <button
+                          onClick={() => setIsMapMode(true)}
+                          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                            isMapMode
+                              ? "bg-white text-gray-900 shadow-sm"
+                              : "text-gray-600 hover:text-gray-900"
+                          }`}
+                        >
+                          📍 Map Picker
+                        </button>
+                        <button
+                          onClick={() => setIsMapMode(false)}
+                          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                            !isMapMode
+                              ? "bg-white text-gray-900 shadow-sm"
+                              : "text-gray-600 hover:text-gray-900"
+                          }`}
+                        >
+                          ⌨️ Type Address
+                        </button>
+                      </div>
+
+                      {/* Map Mode */}
+                      {isMapMode && (
+                        <>
+                          <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                            Click on map to select location
+                          </h4>
+
+                          <div className="mb-4">
+                            <MapView
+                              latitude={
+                                pickerLocation?.latitude ||
+                                clientProfile?.latitude ||
+                                28.6139
+                              }
+                              longitude={
+                                pickerLocation?.longitude ||
+                                clientProfile?.longitude ||
+                                77.209
+                              }
+                              zoom={13}
+                              height="400px"
+                              onMapClick={handleMapLocationClick}
+                              markers={
+                                pickerLocation
+                                  ? [
+                                      {
+                                        lat: pickerLocation.latitude,
+                                        lon: pickerLocation.longitude,
+                                        label: "Selected Location",
+                                        color: "#10B981",
+                                      },
+                                    ]
+                                  : []
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Address Input Mode */}
+                      {!isMapMode && (
+                        <>
+                          <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                            Enter your address details
+                          </h4>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                House/Building Number & Street *
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="e.g., 123, MG Road"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                onChange={(e) => {
+                                  const currentAddress = pickedAddress || {
+                                    address: "",
+                                    city: "",
+                                    state: "",
+                                    country: "India",
+                                  };
+                                  setPickedAddress({
+                                    ...currentAddress,
+                                    address:
+                                      e.target.value +
+                                      (currentAddress.city
+                                        ? `, ${currentAddress.city}`
+                                        : ""),
+                                  });
+                                }}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Area/Locality
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., Sector 18"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  City *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., Delhi"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                  onChange={(e) => {
+                                    const currentAddress = pickedAddress || {
+                                      address: "",
+                                      city: "",
+                                      state: "",
+                                      country: "India",
+                                    };
+                                    setPickedAddress({
+                                      ...currentAddress,
+                                      city: e.target.value,
+                                    });
+
+                                    // Set approximate coordinates for major cities
+                                    const cityCoords: {
+                                      [key: string]: [number, number];
+                                    } = {
+                                      delhi: [28.6139, 77.209],
+                                      mumbai: [19.076, 72.8777],
+                                      bangalore: [12.9716, 77.5946],
+                                      pune: [18.5204, 73.8567],
+                                      chennai: [13.0827, 80.2707],
+                                      hyderabad: [17.385, 78.4867],
+                                      kolkata: [22.5726, 88.3639],
+                                    };
+
+                                    const city = e.target.value.toLowerCase();
+                                    const coords = cityCoords[city] || [
+                                      28.6139, 77.209,
+                                    ];
+
+                                    setPickerLocation({
+                                      latitude: coords[0],
+                                      longitude: coords[1],
+                                    });
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  State *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., Delhi"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                  onChange={(e) => {
+                                    const currentAddress = pickedAddress || {
+                                      address: "",
+                                      city: "",
+                                      state: "",
+                                      country: "India",
+                                    };
+                                    setPickedAddress({
+                                      ...currentAddress,
+                                      state: e.target.value,
+                                    });
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  PIN Code
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., 110001"
+                                  maxLength={6}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-0.5">
+                            <span className="text-blue-600 text-xs font-bold">
+                              i
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-blue-800 text-sm">
+                              {isMapMode
+                                ? "Click anywhere on the map to select where you want the service. The address will be automatically detected."
+                                : "Enter your complete address details. We'll use this to find nearby service providers."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Location Details Section */}
+                    <div className="order-1 lg:order-2">
+                      <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                        Selected Location
+                      </h4>
+
+                      {isLoadingAddress && (
+                        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg mb-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+                          <span className="text-gray-600">
+                            Getting address...
+                          </span>
+                        </div>
+                      )}
+
+                      {pickedAddress && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-start gap-3">
+                            <FiMapPin className="text-green-600 mt-1" />
+                            <div className="flex-1">
+                              <h5 className="font-semibold text-gray-800 mb-2">
+                                Address Details
+                              </h5>
+                              <p className="text-gray-700 text-sm mb-2">
+                                {pickedAddress.address}
+                              </p>
+                              {pickedAddress.city && (
+                                <p className="text-gray-600 text-xs">
+                                  {pickedAddress.city}, {pickedAddress.state}
+                                </p>
+                              )}
+                              {pickerLocation && (
+                                <p className="text-gray-500 text-xs mt-2">
+                                  Coordinates:{" "}
+                                  {pickerLocation.latitude.toFixed(4)},{" "}
+                                  {pickerLocation.longitude.toFixed(4)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!pickerLocation && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                          <p className="text-gray-600 text-center">
+                            Click on the map to select a location
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Quick Actions */}
+                      <div className="space-y-3 mb-6">
+                        <button
+                          onClick={getCurrentLocation}
+                          className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-3"
+                        >
+                          <FiMapPin />
+                          <span>Use My Current Location</span>
+                        </button>
+                      </div>
+
+                      {/* Confirm Button */}
+                      {((isMapMode && pickerLocation && pickedAddress) ||
+                        (!isMapMode && pickedAddress && pickerLocation)) && (
+                        <button
+                          onClick={handlePickedLocationConfirm}
+                          className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                        >
+                          Confirm This Location
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -1256,14 +1744,41 @@ export default function ClientServicesPage() {
                       }
                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {bookingLoading
-                        ? "Sending Request..."
-                        : "Send Booking Request"}
+                      {bookingLoading ? "Processing..." : "Continue to Payment"}
                     </button>
                   </div>
                 </div>
               </motion.div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Payment Modal */}
+        <AnimatePresence>
+          {showPaymentModal && selectedService && selectedProvider && (
+            <CreateBookingWithPayment
+              service={selectedService}
+              onClose={() => setShowPaymentModal(false)}
+              onSuccess={handlePaymentSuccess}
+              preSelectedBookingData={{
+                providerId: selectedProvider.id,
+                providerName:
+                  selectedProvider.businessName || selectedProvider.name,
+                date: selectedDate,
+                time: selectedTime,
+                notes: bookingNotes,
+                clientAddress:
+                  selectedServiceLocation?.address ||
+                  clientProfile?.address ||
+                  clientProfile?.city ||
+                  "",
+                clientLatitude:
+                  selectedServiceLocation?.latitude || clientProfile?.latitude,
+                clientLongitude:
+                  selectedServiceLocation?.longitude ||
+                  clientProfile?.longitude,
+              }}
+            />
           )}
         </AnimatePresence>
 

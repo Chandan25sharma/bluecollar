@@ -1,0 +1,269 @@
+/* DomeGallery.css */
+.sphere-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  --radius: 520px;
+  --viewer-pad: 72px;
+  --circ: calc(var(--radius) * 3.14);
+  --rot-y: calc((360deg / var(--segments-x)) / 2);
+  --rot-x: calc((360deg / var(--segments-y)) / 2);
+  --item-width: calc(var(--circ) / var(--segments-x));
+  --item-height: calc(var(--circ) / var(--segments-y));
+}
+
+.sphere-root * {
+  box-sizing: border-box;
+}
+
+.sphere,
+.item,
+.item__image {
+  transform-style: preserve-3d;
+}
+
+main.sphere-main {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: transparent;
+}
+
+.stage {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  perspective: calc(var(--radius) * 2);
+  perspective-origin: 50% 50%;
+  contain: layout paint size;
+}
+
+.sphere {
+  transform: translateZ(calc(var(--radius) * -1));
+  will-change: transform;
+}
+
+.overlay,
+.overlay--blur {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.overlay {
+  background-image: radial-gradient(rgba(235, 235, 235, 0) 65%, var(--overlay-blur-color, #0a4a3a) 100%);
+}
+
+.overlay--blur {
+  -webkit-mask-image: radial-gradient(rgba(235, 235, 235, 0) 70%, var(--overlay-blur-color, #0a4a3a) 90%);
+  mask-image: radial-gradient(rgba(235, 235, 235, 0) 70%, var(--overlay-blur-color, #0a4a3a) 90%);
+  backdrop-filter: blur(3px);
+}
+
+.item {
+  width: calc(var(--item-width) * var(--item-size-x));
+  height: calc(var(--item-height) * var(--item-size-y));
+  position: absolute;
+  top: -999px;
+  bottom: -999px;
+  left: -999px;
+  right: -999px;
+  margin: auto;
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform 300ms;
+  transform: rotateY(calc(var(--rot-y) * (var(--offset-x) + ((var(--item-size-x) - 1) / 2)) + var(--rot-y-delta, 0deg)))
+    rotateX(calc(var(--rot-x) * (var(--offset-y) - ((var(--item-size-y) - 1) / 2)) + var(--rot-x-delta, 0deg)))
+    translateZ(var(--radius));
+}
+
+.item__image {
+  position: absolute;
+  display: block;
+  inset: 10px;
+  border-radius: var(--tile-radius, 20px);
+  background: transparent;
+  overflow: hidden;
+  backface-visibility: hidden;
+  transition: transform 300ms;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  pointer-events: auto;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.item__image:hover {
+  transform: translateZ(10px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.item__image:focus {
+  outline: none;
+  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.item__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  backface-visibility: hidden;
+  filter: var(--image-filter, none);
+  transition: transform 300ms ease;
+}
+
+.item__image:hover img {
+  transform: scale(1.05);
+}
+
+/* Provider name in bottom corner */
+.provider-name {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 300ms ease;
+  z-index: 10;
+  white-space: nowrap;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item__image:hover .provider-name {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 1), rgba(5, 150, 105, 1));
+}
+
+.viewer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--viewer-pad);
+}
+
+.viewer .frame {
+  height: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--enlarge-radius, 24px);
+  display: flex;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .viewer .frame {
+    height: auto;
+    width: 100%;
+  }
+}
+
+.viewer .scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 500ms ease;
+  backdrop-filter: blur(8px);
+}
+
+.sphere-root[data-enlarging='true'] .viewer .scrim {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.viewer .enlarge {
+  position: absolute;
+  z-index: 30;
+  border-radius: var(--enlarge-radius, 24px);
+  overflow: hidden;
+  transition:
+    transform 500ms ease,
+    opacity 500ms ease;
+  transform-origin: top left;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 3px solid rgba(16, 185, 129, 0.3);
+}
+
+.viewer .enlarge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: var(--image-filter, none);
+}
+
+.sphere-root .enlarge-closing img {
+  filter: var(--image-filter, none);
+}
+
+.edge-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 120px;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--overlay-blur-color, #0a4a3a));
+}
+
+.edge-fade--top {
+  top: 0;
+  transform: rotate(180deg);
+}
+
+.edge-fade--bottom {
+  bottom: 0;
+}
+
+/* Scroll lock utility */
+.dg-scroll-lock {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .provider-name {
+    font-size: 10px;
+    padding: 3px 6px;
+    border-radius: 8px;
+    bottom: 6px;
+    right: 6px;
+  }
+  
+  .item__image {
+    inset: 6px;
+  }
+  
+  .viewer {
+    --viewer-pad: 20px;
+  }
+}

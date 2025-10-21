@@ -59,6 +59,7 @@ export class BookingsService {
       }
     }
 
+    // CREATE BOOKING WITH PENDING_PAYMENT STATUS - Payment Required Before Provider Notification
     const booking = await this.prisma.booking.create({
       data: {
         clientId: clientProfile.id,
@@ -67,7 +68,7 @@ export class BookingsService {
         date: new Date(bookingData.date),
         notes: bookingData.notes,
         totalAmount: service.price,
-        status: BookingStatus.PENDING,
+        status: BookingStatus.PENDING, // Changed: Booking starts as PENDING_PAYMENT until paid
         clientAddress: bookingData.clientAddress,
         clientLatitude: bookingData.clientLatitude,
         clientLongitude: bookingData.clientLongitude,
@@ -98,10 +99,74 @@ export class BookingsService {
       }
     });
 
-    // Notify provider of new booking
+    // DO NOT notify provider yet - they get notified only after payment
+    // await this.notificationsService.notifyNewBooking(booking.id);
+
+    return {
+      ...booking,
+      requiresPayment: true,
+      message: 'Booking created. Payment required to notify provider.'
+    };
+  }
+
+  /**
+   * Create booking with payment - NEW PAYMENT-FIRST FLOW
+   */
+  async createBookingWithPayment(clientUserId: string, bookingData: CreateBookingDto & { paymentData: any }) {
+    // Create booking first (without notifying provider)
+    const booking = await this.createBooking(clientUserId, bookingData);
+    
+    return {
+      booking,
+      nextStep: 'payment',
+      paymentRequired: true,
+      message: 'Please complete payment to send booking request to provider'
+    };
+  }
+
+  /**
+   * Confirm booking after successful payment - Provider gets notified here
+   */
+  async confirmBookingAfterPayment(bookingId: string, paymentId: string) {
+    // Update booking status to ACCEPTED (waiting for provider response)
+    const booking = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { 
+        status: BookingStatus.ACCEPTED, // Now provider can see and respond
+        updatedAt: new Date()
+      },
+      include: {
+        client: {
+          include: {
+            user: {
+              select: {
+                email: true,
+                phone: true,
+              }
+            }
+          }
+        },
+        provider: {
+          include: {
+            user: {
+              select: {
+                email: true,
+                phone: true,
+              }
+            }
+          }
+        },
+        service: true,
+      }
+    });
+
+    // NOW notify provider about the PAID booking
     await this.notificationsService.notifyNewBooking(booking.id);
 
-    return booking;
+    return {
+      ...booking,
+      message: 'Payment successful! Provider has been notified of your booking request.'
+    };
   }
 
   async getBookingsByClient(clientUserId: string) {

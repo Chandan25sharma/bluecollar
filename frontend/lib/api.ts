@@ -205,3 +205,40 @@ export const adminAPI = {
   verifyProvider: (id: string, data: { adminId: string; approved: boolean; reason?: string }) =>
     api.patch(`/admin/providers/${id}/verify`, data),
 };
+
+// Messages API methods
+export const messagesAPI = {
+  // Get conversations for current user
+  getConversations: () =>
+    api.get('/messages/conversations'),
+  
+  // Get messages in a conversation
+  getMessages: (conversationId: string, page?: number, limit?: number) =>
+    api.get(`/messages/conversations/${conversationId}/messages`, { 
+      params: { page, limit } 
+    }),
+  
+  // Send a message
+  sendMessage: (conversationId: string, content: string, type?: string, location?: any) =>
+    api.post(`/messages/conversations/${conversationId}/messages`, { 
+      content, 
+      type: type || 'text',
+      location 
+    }),
+  
+  // Create a new conversation
+  createConversation: (participantId: string, bookingId?: string) =>
+    api.post('/messages/conversations', { participantId, bookingId }),
+  
+  // Mark messages as read
+  markAsRead: (conversationId: string, messageIds: string[]) =>
+    api.put(`/messages/conversations/${conversationId}/read`, { messageIds }),
+  
+  // Get unread count
+  getUnreadCount: () =>
+    api.get('/messages/unread-count'),
+  
+  // Search conversations
+  searchConversations: (query: string) =>
+    api.get('/messages/search', { params: { query } }),
+};

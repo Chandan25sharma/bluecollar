@@ -129,10 +129,13 @@ export default function BookingDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <ClientHeader />
         <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+            <p className="text-gray-600 text-sm">Loading booking details...</p>
+          </div>
         </div>
       </div>
     );
@@ -140,16 +143,44 @@ export default function BookingDetailsPage() {
 
   if (error || !booking) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <ClientHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600">Error</h1>
-            <p className="mt-2 text-gray-600">{error || "Booking not found"}</p>
+          <div className="text-center bg-white rounded-xl shadow-sm p-8">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold text-red-600 mb-2">Error</h1>
+            <p className="text-gray-600 mb-6">{error || "Booking not found"}</p>
             <Link
               href="/dashboard/client/bookings"
-              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
               Back to Bookings
             </Link>
           </div>
@@ -159,11 +190,54 @@ export default function BookingDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <ClientHeader />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-8 pb-20 md:pb-8">
+        {/* Mobile Header */}
+        <div className="block md:hidden mb-6">
+          <Link
+            href="/dashboard/client/bookings"
+            className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 mb-3"
+          >
+            <svg
+              className="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Bookings
+          </Link>
+          <div className="bg-white rounded-xl shadow-sm p-4 border-l-4 border-blue-500">
+            <h1 className="text-xl font-bold text-gray-900 mb-1">
+              {booking.service.title}
+            </h1>
+            <p className="text-sm text-gray-600 mb-2">
+              Booking ID: {booking.id.substring(0, 8)}...
+            </p>
+            <div className="flex items-center justify-between">
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${getStatusColor(
+                  booking.status
+                )}`}
+              >
+                {booking.status.replace("_", " ")}
+              </span>
+              <span className="text-lg font-bold text-green-600">
+                ${booking.service.price}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:block mb-8">
           <Link
             href="/dashboard/client/bookings"
             className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 mb-4"
@@ -187,7 +261,400 @@ export default function BookingDetailsPage() {
           <p className="mt-1 text-sm text-gray-600">Booking ID: {booking.id}</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Mobile Layout */}
+        <div className="block md:hidden space-y-4">
+          {/* Service Card */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Service Details
+              </h2>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                {booking.service.category}
+              </span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Duration</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {booking.service.duration}
+                </span>
+              </div>
+              {booking.service.description && (
+                <div>
+                  <span className="text-sm text-gray-600 block mb-1">
+                    Description
+                  </span>
+                  <p className="text-sm text-gray-900">
+                    {booking.service.description}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Provider Card */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              Provider
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Business</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {booking.provider.name}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Rating</span>
+                <div className="flex items-center">
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <svg
+                        key={star}
+                        className={`h-3 w-3 ${
+                          star <= booking.provider.rating
+                            ? "text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="ml-1 text-xs text-gray-600">
+                    {booking.provider.rating}/5
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                <a
+                  href={`tel:${booking.provider.user.phone}`}
+                  className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    />
+                  </svg>
+                  Call Provider
+                </a>
+                <a
+                  href={`mailto:${booking.provider.user.email}`}
+                  className="flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Send Email
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Schedule Card */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              Schedule
+            </h2>
+            <div className="space-y-3">
+              {booking.date && (
+                <div className="flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-2 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      Scheduled
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {formatDate(booking.date)}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center">
+                <svg
+                  className="w-4 h-4 mr-2 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Created</p>
+                  <p className="text-xs text-gray-600">
+                    {formatDate(booking.createdAt)}
+                  </p>
+                </div>
+              </div>
+              {booking.notes && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-600 mb-1">Notes</p>
+                  <p className="text-sm text-gray-900">{booking.notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Location Card */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              Service Location
+            </h2>
+            <div className="flex items-start mb-3">
+              <svg
+                className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+              </svg>
+              <p className="text-sm text-gray-900">{booking.clientAddress}</p>
+            </div>
+
+            {booking.clientLatitude && booking.clientLongitude && (
+              <>
+                <div className="h-40 rounded-lg overflow-hidden mb-3">
+                  <MapView
+                    latitude={booking.clientLatitude}
+                    longitude={booking.clientLongitude}
+                    zoom={15}
+                    height="160px"
+                    markers={[
+                      {
+                        lat: booking.clientLatitude,
+                        lon: booking.clientLongitude,
+                        label: "Service Location",
+                        color: "blue",
+                      },
+                    ]}
+                  />
+                </div>
+                <a
+                  href={`https://www.google.com/maps?q=${booking.clientLatitude},${booking.clientLongitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                  </svg>
+                  Open in Maps
+                </a>
+              </>
+            )}
+          </div>
+
+          {/* Payment Card */}
+          {booking.payment && (
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                Payment
+              </h2>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Amount</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    ${booking.payment.amount}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Status</span>
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                      booking.payment.status === "COMPLETED"
+                        ? "bg-green-100 text-green-800"
+                        : booking.payment.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {booking.payment.status}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Date</span>
+                  <span className="text-xs text-gray-900">
+                    {formatDate(booking.payment.createdAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Actions Card */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              Actions
+            </h2>
+            <div className="space-y-3">
+              {/* Payment Section */}
+              {needsPayment && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-start">
+                    <svg
+                      className="w-5 h-5 text-amber-500 mr-2 mt-0.5 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-amber-800 mb-1">
+                        Payment Required
+                      </h3>
+                      <p className="text-xs text-amber-700 mb-3">
+                        Complete payment to confirm your booking
+                      </p>
+                      <PaymentButton
+                        bookingId={booking.id}
+                        amount={booking.service.price}
+                        providerId={booking.provider.id}
+                        serviceName={booking.service.title}
+                        providerName={booking.provider.name}
+                        onSuccess={handlePaymentSuccess}
+                        onFailure={handlePaymentFailure}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Success/Error Messages */}
+              {paymentStatus === "success" && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-start">
+                    <svg
+                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div>
+                      <h3 className="text-sm font-medium text-green-800 mb-1">
+                        Payment Successful!
+                      </h3>
+                      <p className="text-xs text-green-700">
+                        Your booking has been confirmed.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentStatus === "failed" && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="flex items-start">
+                    <svg
+                      className="w-5 h-5 text-red-500 mr-2 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div>
+                      <h3 className="text-sm font-medium text-red-800 mb-1">
+                        Payment Failed
+                      </h3>
+                      <p className="text-xs text-red-700">Please try again.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="space-y-2">
+                {booking.status === "COMPLETED" && (
+                  <Link
+                    href={`/dashboard/client/bookings/${booking.id}/review`}
+                    className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium"
+                  >
+                    Add Review
+                  </Link>
+                )}
+
+                {(booking.status === "PENDING_PAYMENT" ||
+                  booking.status === "PENDING") && (
+                  <button
+                    onClick={() => console.log("Cancel booking")}
+                    className="w-full flex items-center justify-center px-4 py-2 border border-red-300 text-red-700 bg-white rounded-lg text-sm font-medium hover:bg-red-50"
+                  >
+                    Cancel Booking
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Layout - Keep as is */}
+        <div className="hidden md:grid md:grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Booking Information */}
           <div className="space-y-6">
             {/* Service Details */}
