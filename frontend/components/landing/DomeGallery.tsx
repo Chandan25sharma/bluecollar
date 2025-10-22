@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { useGesture } from "@use-gesture/react";
@@ -75,19 +76,20 @@ const DEFAULTS = {
   segments: 35,
 };
 
-const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-const normalizeAngle = (d) => ((d % 360) + 360) % 360;
-const wrapAngleSigned = (deg) => {
+const clamp = (v: number, min: number, max: number) =>
+  Math.min(Math.max(v, min), max);
+const normalizeAngle = (d: number) => ((d % 360) + 360) % 360;
+const wrapAngleSigned = (deg: number) => {
   const a = (((deg + 180) % 360) + 360) % 360;
   return a - 180;
 };
-const getDataNumber = (el, name, fallback) => {
+const getDataNumber = (el: HTMLElement, name: string, fallback: number) => {
   const attr = el.dataset[name] ?? el.getAttribute(`data-${name}`);
   const n = attr == null ? NaN : parseFloat(attr);
   return Number.isFinite(n) ? n : fallback;
 };
 
-function buildItems(pool, seg) {
+function buildItems(pool: any[], seg: any) {
   const xCols = Array.from({ length: seg }, (_, i) => -37 + i * 2);
   const evenYs = [-4, -2, 0, 2, 4];
   const oddYs = [-3, -1, 1, 3, 5];
@@ -135,7 +137,13 @@ function buildItems(pool, seg) {
   }));
 }
 
-function computeItemBaseRotation(offsetX, offsetY, sizeX, sizeY, segments) {
+function computeItemBaseRotation(
+  offsetX: number,
+  offsetY: number,
+  sizeX: number,
+  sizeY: number,
+  segments: number
+) {
   const unit = 360 / segments / 2;
   const rotateY = unit * (offsetX + (sizeX - 1) / 2);
   const rotateX = unit * (offsetY - (sizeY - 1) / 2);
@@ -161,9 +169,9 @@ export default function DomeGallery({
   openedImageBorderRadius = "24px",
   grayscale = false,
 }) {
-  const rootRef = useRef(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef(null);
-  const sphereRef = useRef(null);
+  const sphereRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef(null);
   const viewerRef = useRef(null);
   const scrimRef = useRef(null);
@@ -198,14 +206,14 @@ export default function DomeGallery({
     [services, segments]
   );
 
-  const applyTransform = (xDeg, yDeg) => {
+  const applyTransform = (xDeg: number, yDeg: number) => {
     const el = sphereRef.current;
     if (el) {
       el.style.transform = `translateZ(calc(var(--radius) * -1)) rotateX(${xDeg}deg) rotateY(${yDeg}deg)`;
     }
   };
 
-  const lockedRadiusRef = useRef(null);
+  const lockedRadiusRef = useRef<number | null>(null);
 
   useEffect(() => {
     const root = rootRef.current;

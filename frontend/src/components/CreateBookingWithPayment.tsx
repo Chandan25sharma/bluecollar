@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { profileAPI } from "../../lib/api";
+import { bookingsAPI, paymentsAPI, profileAPI } from "../../lib/api";
 import { authUtils } from "../../lib/auth";
 
 interface Service {
@@ -147,28 +147,49 @@ export default function CreateBookingWithPayment({
         return;
       }
 
-      // Create booking with payment-first flow (PENDING status)
-      const bookingResponse = await fetch(
-        "http://localhost:4001/api/bookings",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(bookingData),
-        }
-      );
-
-      if (!bookingResponse.ok) {
-        throw new Error("Failed to create booking");
+      // Get client ID from authenticated user
+      const user = authUtils.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
       }
 
-      const booking = await bookingResponse.json();
+      // Create booking payload with clientId as string
+      const bookingPayload = {
+        ...bookingData,
+        clientId: String(user.id), // Ensure clientId is string
+        serviceId: String(bookingData.serviceId), // Ensure serviceId is string
+        providerId: String(bookingData.providerId), // Ensure providerId is string
+      };
+
+      const bookingRes = await bookingsAPI.createBooking(bookingPayload);
+      const booking = bookingRes.data;
       setCreatedBooking(booking);
 
-      // Move to payment step
-      setStep(2);
+      // Automatically complete payment simulation instead of going to payment step
+      console.log("🚀 Auto-completing payment after booking creation...");
+
+      // Create payment order
+      const orderRes = await paymentsAPI.createOrder(
+        String(booking.id),
+        service.price,
+        String(bookingData.providerId)
+      );
+      const order = orderRes.data;
+
+      // Immediately simulate successful payment
+      const verifyRes = await paymentsAPI.verifyPayment({
+        razorpay_order_id: String(order.id),
+        razorpay_payment_id: `pay_AUTO_${Date.now()}`,
+        razorpay_signature: `sig_auto_${Date.now()}`,
+      });
+
+      const verification = verifyRes.data;
+      console.log("✅ Auto-payment completed successfully!");
+
+      // Go directly to success step
+      setStep(3);
+      onSuccess?.(verification.booking || booking);
     } catch (err: any) {
       setError(err.message || "Failed to create booking");
     } finally {
@@ -183,39 +204,25 @@ export default function CreateBookingWithPayment({
     try {
       const token = localStorage.getItem("token");
 
-      // Create Razorpay payment order
-      const paymentResponse = await fetch(
-        "http://localhost:4001/api/payments/create-order",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            bookingId: createdBooking.id,
-            amount: service.price,
-            currency: "INR",
-            receipt: `booking_${createdBooking.id}`,
-          }),
-        }
+      // Create payment order via API helper
+      const paymentRes = await paymentsAPI.createOrder(
+        String(createdBooking.id), // Ensure booking ID is string
+        service.price,
+        String(createdBooking.providerId || bookingData.providerId) // Ensure provider ID is string
       );
-
-      if (!paymentResponse.ok) {
-        throw new Error("Failed to create payment order");
-      }
-
-      const paymentOrder = await paymentResponse.json();
+      const paymentOrder = paymentRes.data;
       setPaymentOrder(paymentOrder);
 
       // For testing - simulate payment completion
       if (process.env.NODE_ENV === "development") {
-        // Show test payment options
+        // Show test payment options: instead of opening Razorpay for testing,
+        // present a simple in-page choice. We'll simulate success on click.
         const useTestPayment = confirm(
-          "Use test payment? Click OK for successful payment, Cancel to open Razorpay"
+          "Use test payment? Click OK to simulate a successful payment (no real payment)."
         );
 
         if (useTestPayment) {
+          // Directly simulate the payment flow using the paymentsAPI verify endpoint
           await handleTestPayment(paymentOrder.id);
           return;
         }
@@ -230,9 +237,9 @@ export default function CreateBookingWithPayment({
         description: `Payment for ${service.title}`,
         order_id: paymentOrder.id,
         prefill: {
-          name: clientName,
-          email: clientEmail,
-          contact: clientPhone,
+          name: paymentData.customerName,
+          email: paymentData.customerEmail,
+          contact: paymentData.customerPhone,
         },
         theme: {
           color: "#2563eb",
@@ -259,35 +266,89 @@ export default function CreateBookingWithPayment({
   const handleTestPayment = async (orderId: string) => {
     try {
       const token = localStorage.getItem("token");
+      // Simulate successful payment by calling paymentsAPI.verifyPayment with test ids
+      const verificationRes = await paymentsAPI.verifyPayment({
+        razorpay_order_id: orderId,
+        razorpay_payment_id: `pay_TEST${Date.now()}`,
+        razorpay_signature: "test_signature",
+      });
 
-      // Simulate successful payment
-      const verifyResponse = await fetch(
-        "http://localhost:4001/api/payments/verify",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            razorpay_order_id: orderId,
-            razorpay_payment_id: `pay_TEST${Date.now()}`,
-            razorpay_signature: "test_signature",
-          }),
-        }
-      );
+      const verification = verificationRes.data;
 
-      if (!verifyResponse.ok) {
-        throw new Error("Payment verification failed");
-      }
-
-      const verification = await verifyResponse.json();
-
-      // Move to success step
+      // Move to success step and call onSuccess with returned booking data (if any)
       setStep(3);
-      onSuccess?.(verification.booking);
+      onSuccess?.(verification.booking || createdBooking);
     } catch (err: any) {
       setError(err.message || "Payment verification failed");
+      setLoading(false);
+    }
+  };
+
+  // New helper: simulate payment when user clicks a payment method button in UI
+  const simulatePaymentClick = async (method: string) => {
+    setError("");
+    setLoading(true);
+
+    console.log(`🎯 Starting ${method} payment simulation...`);
+
+    try {
+      // Step 1: Ensure booking exists
+      let booking = createdBooking;
+      if (!booking) {
+        console.log("📝 Creating booking...");
+
+        // Get client ID from authenticated user
+        const user = authUtils.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+
+        // Create booking payload with clientId as string
+        const bookingPayload = {
+          ...bookingData,
+          clientId: String(user.id), // Ensure clientId is string
+          serviceId: String(bookingData.serviceId), // Ensure serviceId is string
+          providerId: String(bookingData.providerId), // Ensure providerId is string
+        };
+
+        const bookingRes = await bookingsAPI.createBooking(bookingPayload);
+        booking = bookingRes.data;
+        setCreatedBooking(booking);
+        console.log("✅ Booking created:", booking.id);
+      }
+
+      // Step 2: Create payment order
+      console.log("💳 Creating payment order...");
+      const orderRes = await paymentsAPI.createOrder(
+        String(booking.id), // Ensure bookingId is string
+        service.price,
+        String(bookingData.providerId) // Ensure providerId is string
+      );
+      const order = orderRes.data;
+      console.log("✅ Payment order created:", order.id);
+
+      // Step 3: Immediately simulate successful payment
+      console.log(`🚀 Simulating ${method} payment success...`);
+      const verifyRes = await paymentsAPI.verifyPayment({
+        razorpay_order_id: String(order.id), // Ensure order ID is string
+        razorpay_payment_id: `pay_TEST_${method.toUpperCase()}_${Date.now()}`,
+        razorpay_signature: `sig_test_${method}_${Date.now()}`,
+      });
+
+      const verification = verifyRes.data;
+      console.log("✅ Payment verified successfully!");
+
+      // Step 4: Complete booking flow
+      setStep(3);
+      onSuccess?.(verification.booking || booking);
+    } catch (err: any) {
+      console.error("❌ Payment simulation failed:", err);
+      const errorMessage =
+        err?.response?.data?.message ||
+        err.message ||
+        `${method} payment failed`;
+      setError(errorMessage);
+    } finally {
       setLoading(false);
     }
   };
@@ -702,74 +763,110 @@ export default function CreateBookingWithPayment({
               </div>
 
               {/* Payment Methods Selection */}
-              <div className="border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4 text-center">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl p-6 border border-blue-200">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2 text-center">
                   Choose Payment Method
                 </h3>
+                <p className="text-sm text-gray-600 text-center mb-6">
+                  Click any method to complete your booking instantly (Test
+                  Mode)
+                </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Simple Test Button */}
+                <div className="mb-6">
                   <button
-                    onClick={handlePaymentSubmit}
-                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 transition-all group"
+                    onClick={() => simulatePaymentClick("test")}
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl p-4 hover:from-green-600 hover:to-blue-600 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="text-center">
-                      <div className="text-3xl mb-2">💳</div>
-                      <div className="font-medium text-gray-900 group-hover:text-blue-700">
-                        Credit/Debit Card
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Visa, Mastercard, Rupay
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={handlePaymentSubmit}
-                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-green-500 hover:bg-green-50 transition-all group"
-                  >
-                    <div className="text-center">
-                      <div className="text-3xl mb-2">📱</div>
-                      <div className="font-medium text-gray-900 group-hover:text-green-700">
-                        UPI
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Pay with any UPI app
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={handlePaymentSubmit}
-                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-purple-500 hover:bg-purple-50 transition-all group"
-                  >
-                    <div className="text-center">
-                      <div className="text-3xl mb-2">🏦</div>
-                      <div className="font-medium text-gray-900 group-hover:text-purple-700">
-                        Net Banking
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        All major banks
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={handlePaymentSubmit}
-                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                  >
-                    <div className="text-center">
-                      <div className="text-3xl mb-2">📲</div>
-                      <div className="font-medium text-gray-900 group-hover:text-indigo-700">
-                        Wallet
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        PhonePe, Paytm, Google Pay
+                      <div className="text-2xl mb-2">🚀</div>
+                      <div className="font-bold text-lg">TEST PAYMENT</div>
+                      <div className="text-sm opacity-90 mt-1">
+                        Complete booking instantly (No real payment)
                       </div>
                     </div>
                   </button>
                 </div>
 
-                <div className="flex items-center justify-center text-xs text-gray-500 border-t pt-4">
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <button
+                    onClick={() => simulatePaymentClick("card")}
+                    disabled={loading}
+                    className="bg-white border-2 border-blue-200 rounded-xl p-4 hover:border-blue-500 hover:shadow-lg hover:scale-105 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">💳</div>
+                      <div className="font-semibold text-gray-900 group-hover:text-blue-700">
+                        Card
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Instant Pay
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => simulatePaymentClick("upi")}
+                    disabled={loading}
+                    className="bg-white border-2 border-green-200 rounded-xl p-4 hover:border-green-500 hover:shadow-lg hover:scale-105 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📱</div>
+                      <div className="font-semibold text-gray-900 group-hover:text-green-700">
+                        UPI
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Quick Pay
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => simulatePaymentClick("netbanking")}
+                    disabled={loading}
+                    className="bg-white border-2 border-purple-200 rounded-xl p-4 hover:border-purple-500 hover:shadow-lg hover:scale-105 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">🏦</div>
+                      <div className="font-semibold text-gray-900 group-hover:text-purple-700">
+                        Bank
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Net Banking
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => simulatePaymentClick("wallet")}
+                    disabled={loading}
+                    className="bg-white border-2 border-orange-200 rounded-xl p-4 hover:border-orange-500 hover:shadow-lg hover:scale-105 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📲</div>
+                      <div className="font-semibold text-gray-900 group-hover:text-orange-700">
+                        Wallet
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Digital Wallet
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {loading && (
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-100 rounded-full">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                      <span className="text-sm font-medium text-blue-700">
+                        Processing Payment...
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-center text-xs text-green-600 border-t border-blue-200 pt-4">
                   <svg
                     className="w-4 h-4 mr-1"
                     fill="none"
@@ -780,10 +877,10 @@ export default function CreateBookingWithPayment({
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  🔒 Secured by Razorpay • 256-bit SSL encryption
+                  ✅ Test Mode - No Real Payment Required
                 </div>
               </div>
             </div>

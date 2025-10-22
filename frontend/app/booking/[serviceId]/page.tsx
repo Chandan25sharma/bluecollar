@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import LocationPicker from "../../../components/LocationPicker";
+import PaymentMethodSelector from "../../../components/PaymentMethodSelector";
 import { bookingsAPI, servicesAPI } from "../../../lib/api";
 import { authUtils } from "../../../lib/auth";
 import { LocationData } from "../../../lib/location";
@@ -34,6 +35,8 @@ export default function BookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
 
   // Form data
   const [bookingDate, setBookingDate] = useState("");
@@ -98,6 +101,13 @@ export default function BookingPage() {
       return;
     }
 
+    // Show payment modal instead of directly creating booking
+    setShowPayment(true);
+  };
+
+  const handlePaymentComplete = async (payment: any) => {
+    setPaymentData(payment);
+    setShowPayment(false);
     setSubmitting(true);
 
     try {
@@ -105,6 +115,7 @@ export default function BookingPage() {
         serviceId: service!.id,
         date: bookingDate,
         notes: notes.trim() || undefined,
+        paymentData: payment, // Include payment data
       };
 
       // Add location data if selected
@@ -124,13 +135,17 @@ export default function BookingPage() {
       setSuccess(true);
       setTimeout(() => {
         router.push("/dashboard/client");
-      }, 2000);
+      }, 3000);
     } catch (err: any) {
       console.error("Error creating booking:", err);
       setError(err.response?.data?.message || "Failed to create booking");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPayment(false);
   };
 
   if (loading) {
@@ -180,11 +195,14 @@ export default function BookingPage() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Booking Successful!
+            Payment Successful!
           </h2>
           <p className="text-gray-600 mb-4">
-            Your booking request has been sent to the provider. You'll receive a
-            notification once they confirm.
+            Your booking has been confirmed and payment of ${service?.price} has
+            been processed.
+          </p>
+          <p className="text-gray-600 mb-4">
+            The provider will contact you to confirm the appointment details.
           </p>
           <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
         </div>
@@ -368,19 +386,28 @@ export default function BookingPage() {
                     disabled={submitting}
                     className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
-                    {submitting ? "Processing..." : "Confirm Booking"}
+                    {submitting ? "Processing..." : "Proceed to Payment"}
                   </button>
 
                   <p className="text-xs text-gray-500 text-center">
-                    By confirming, you agree to pay ${service.price} for this
-                    service once completed. The provider will contact you to
-                    confirm the final visit time.
+                    You will be redirected to payment gateway to pay $
+                    {service.price} securely.
                   </p>
                 </div>
               </form>
             </div>
           </div>
         </div>
+
+        {/* Payment Modal */}
+        {showPayment && (
+          <PaymentMethodSelector
+            amount={service.price}
+            onPaymentComplete={handlePaymentComplete}
+            onCancel={handlePaymentCancel}
+            loading={submitting}
+          />
+        )}
       </div>
     </div>
   );
