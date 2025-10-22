@@ -5,6 +5,7 @@
   "author": "BlueCollar Team",
   "private": true,
   "license": "UNLICENSED",
+  "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
