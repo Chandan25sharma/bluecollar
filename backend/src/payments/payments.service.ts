@@ -3,11 +3,19 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
-import { PAYMENT_CONFIG, razorpay } from './razorpay.config';
+import { PAYMENT_CONFIG, getRazorpayInstance } from './razorpay.config';
 
 @Injectable()
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private getRazorpay() {
+    const razorpay = getRazorpayInstance();
+    if (!razorpay) {
+      throw new BadRequestException('Payment service not configured');
+    }
+    return razorpay;
+  }
 
   /**
    * Create Razorpay order for booking payment
@@ -59,6 +67,7 @@ export class PaymentsService {
 
     try {
       // Create Razorpay order
+      const razorpay = this.getRazorpay();
       const razorpayOrder = await razorpay.orders.create({
         amount: amount * 100, // Convert to paise
         currency,
