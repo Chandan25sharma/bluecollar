@@ -14,8 +14,16 @@ async function bootstrap() {
   
   // Enable CORS
   app.enableCors({
-    origin: true,
+    origin: [
+      'http://localhost:3000',
+      'https://blue.coderspace.com',
+      'https://*.coderspace.com',
+      'https://vercel.app',
+      'https://*.vercel.app'
+    ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
   
   // Global prefix for all routes
