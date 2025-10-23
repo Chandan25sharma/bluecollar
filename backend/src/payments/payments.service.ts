@@ -320,6 +320,7 @@ export class PaymentsService {
 
     try {
       // Create refund in Razorpay
+      const razorpay = this.getRazorpay();
       const refund = await razorpay.payments.refund(payment.transactionId!, {
         amount: payment.amount * 100, // Convert to paise
         speed: 'normal',
