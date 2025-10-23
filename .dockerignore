@@ -1,7 +1,10 @@
+# Root node_modules (not needed for production)
+node_modules/
+package-lock.json
+
 # Frontend (we only deploy backend)
 frontend/
 .next/
-node_modules/
 
 # Development files
 .git/
@@ -9,6 +12,8 @@ node_modules/
 *.md
 .env.local
 .env.example
+docs/
+*.md
 
 # Build artifacts
 dist/

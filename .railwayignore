@@ -1,26 +1,38 @@
+# Root dependencies (not needed for backend deployment)
+
+node_modules/
+package-lock.json
+
 # Ignore frontend completely
+
 frontend/
 
-# Node modules (will be installed fresh)
-node_modules/
+# Backend node modules (will be installed fresh)
+
 backend/node_modules/
 
 # Git history
+
 .git/
 
 # Development files
+
 .vscode/
 .idea/
-*.log
+_.log
 .env.local
 .env.example
+docs/
+_.md
 
 # Build cache
+
 .next/
 dist/
 build/
 coverage/
 
 # OS files
+
 .DS_Store
 Thumbs.db
