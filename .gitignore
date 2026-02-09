@@ -13,6 +13,9 @@ dist/
 .env.local
 .env.production
 .env.development
+.env.supabase
+.env.railway
+.env.example
 
 # Database
 *.db
